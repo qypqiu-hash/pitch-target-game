@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <title>音高射靶 - 手机版</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+            touch-action: manipulation;
+        }
+
+        h1, h2, h3, .btn-text {
+            font-family: 'Nunito', sans-serif;
+        }
+
+        /* 录音脉冲动画 - 修复版 */
+        @keyframes recording-pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
+            }
+        }
+
+        .record-btn.recording {
+            animation: recording-pulse 1.5s ease-out infinite;
+            background: linear-gradient(to bottom right, #dc2626, #b91c1c);
+        }
+
+        .record-btn.recording:active {
+            animation: none;
+        }
+
+        /* 音色按钮选中状态 */
+        .sound-btn.active {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .mobile-touch-btn {
+                min-height: 48px;
+                min-width: 48px;
+            }
+
+            .record-btn {
+                min-height: 120px;
+            }
+        }
+
+        /* 防止双击缩放 */
+        button {
+            touch-action: manipulation;
+        }
+
+        /* 调试信息 */
+        #debugInfo {
+            font-size: 10px;
+            color: #94a3b8;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Header -->
+    <header class="w-full max-w-lg mb-4">
+        <h1 class="text-3xl font-extrabold text-center bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent mb-1">
+            🎯 音高射靶
+        </h1>
+        <p class="text-center text-slate-500 text-xs font-medium">手机版 - Pitch Target Training</p>
+    </header>
+
+    <!-- 示例音播放区 -->
+    <div class="w-full max-w-lg bg-white rounded-2xl shadow-lg p-4 mb-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-slate-700">目标音示范</p>
+                    <p id="targetNoteDisplay" class="text-xs text-slate-500 truncate">点击右侧播放</p>
+                </div>
+            </div>
+            <button id="playDemoBtn" class="mobile-touch-btn px-5 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 active:scale-95 text-white font-bold rounded-xl transition-all duration-200 shadow-md flex items-center gap-2 flex-shrink-0">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                播放
+            </button>
+        </div>
+    </div>
+
+    <!-- 射靶可视化区域 -->
+    <div class="w-full max-w-lg bg-white rounded-2xl shadow-lg p-4 mb-4 relative">
+        <canvas id="targetCanvas" class="w-full rounded-lg" style="height: 280px;"></canvas>
+
+        <!-- 命中结果显示 -->
+        <div id="resultOverlay" class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-300 rounded-2xl bg-white/90">
+            <div class="text-center p-6">
+                <div id="resultIcon" class="text-5xl mb-2"></div>
+                <p id="resultText" class="text-xl font-bold"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音色类别选择 -->
+    <div class="w-full max-w-lg bg-white rounded-2xl shadow-lg p-4 mb-4">
+        <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+            </svg>
+            选择音色
+        </h3>
+        <div class="grid grid-cols-4 gap-2">
+            <button class="sound-btn active mobile-touch-btn px-3 py-3 rounded-xl text-center font-semibold transition-all duration-200 flex flex-col items-center gap-1 text-xs" data-sound="triangle">
+                <span class="text-2xl">🎹</span>
+                <span>三角波</span>
+            </button>
+            <button class="sound-btn mobile-touch-btn px-3 py-3 rounded-xl text-center font-semibold text-slate-700 transition-all duration-200 flex flex-col items-center gap-1 text-xs bg-slate-50" data-sound="sine">
+                <span class="text-2xl">🎵</span>
+                <span>正弦波</span>
+            </button>
+            <button class="sound-btn mobile-touch-btn px-3 py-3 rounded-xl text-center font-semibold text-slate-700 transition-all duration-200 flex flex-col items-center gap-1 text-xs bg-slate-50" data-sound="piano">
+                <span class="text-2xl">🎼</span>
+                <span>钢琴</span>
+            </button>
+            <button class="sound-btn mobile-touch-btn px-3 py-3 rounded-xl text-center font-semibold text-slate-700 transition-all duration-200 flex flex-col items-center gap-1 text-xs bg-slate-50" data-sound="voice">
+                <span class="text-2xl">🎤</span>
+                <span>人声</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 录音控制区 -->
+    <div class="w-full max-w-lg bg-white rounded-2xl shadow-lg p-4 mb-4">
+        <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+            </svg>
+            录音测试
+        </h3>
+
+        <button id="recordBtn" class="record-btn w-full bg-gradient-to-br from-red-500 to-red-600 active:from-red-600 active:to-red-700 active:scale-95 text-white text-lg font-bold rounded-2xl transition-all duration-200 shadow-lg flex flex-col items-center justify-center gap-2 select-none">
+            <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="6"/>
+            </svg>
+            <span class="text-base">按住说话</span>
+        </button>
+
+        <p id="recordingStatus" class="text-center text-sm text-slate-500 mt-3 min-h-[24px]">
+            先播放示范音，然后按住录音
+        </p>
+
+        <!-- 调试信息 -->
+        <p id="debugInfo" class="text-center text-xs text-slate-400 mt-2 hidden"></p>
+    </div>
+
+    <!-- 结果提示区 -->
+    <div class="w-full max-w-lg bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl shadow-lg p-4 border-2 border-indigo-100 mb-4">
+        <h3 class="text-sm font-bold text-slate-700 mb-2">检测结果</h3>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+            <div class="bg-white/80 rounded-lg p-2">
+                <span class="text-xs text-slate-500 block">目标音</span>
+                <span id="targetNoteResult" class="font-bold text-indigo-600">-</span>
+            </div>
+            <div class="bg-white/80 rounded-lg p-2">
+                <span class="text-xs text-slate-500 block">你的音高</span>
+                <span id="userPitchResult" class="font-bold text-violet-600">-</span>
+            </div>
+            <div class="bg-white/80 rounded-lg p-2 col-span-2">
+                <span class="text-xs text-slate-500 block">偏差</span>
+                <span id="centsDiffResult" class="font-bold text-base">-</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部提示 -->
+    <div class="w-full max-w-lg text-center pb-4">
+        <p class="text-xs text-slate-500">
+            💡 使用步骤：播放示范音 → 按住录音模仿 → 松开查看结果
+        </p>
+    </div>
+
+    <script>
+        // ==================== 全局状态 ====================
+        const NOTE_FREQUENCIES = {
+            'C3': 130.81, 'C#3': 138.59, 'D3': 146.83, 'D#3': 155.56, 'E3': 164.81, 'F3': 174.61, 'F#3': 185.00, 'G3': 196.00, 'G#3': 207.65, 'A3': 220.00, 'A#3': 233.08, 'B3': 246.94,
+            'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88,
+            'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25, 'E5': 659.25, 'F5': 698.46, 'F#5': 739.99, 'G5': 783.99, 'G#5': 830.61, 'A5': 880.00, 'A#5': 932.33, 'B5': 987.77,
+            'C6': 1046.50
+        };
+
+        let currentTargetNote = null;
+        let currentTargetFrequency = null;
+        let selectedSoundType = 'triangle';
+        let audioContext = null;
+        let mediaStream = null;
+        let audioRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        // 调试函数
+        function debugLog(message) {
+            const debugEl = document.getElementById('debugInfo');
+            debugEl.textContent = message;
+            debugEl.classList.remove('hidden');
+            console.log('[Debug]', message);
+        }
+
+        // ==================== Canvas 设置 ====================
+        const canvas = document.getElementById('targetCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            drawTarget(null);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        setTimeout(() => resizeCanvas(), 100);
+
+        // ==================== 绘制靶子 ====================
+        function drawTarget(hitResult = null, isAnimating = false) {
+            const width = canvas.getBoundingClientRect().width;
+            const height = canvas.getBoundingClientRect().height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // 背景
+            ctx.fillStyle = '#F8FAFC';
+            ctx.fillRect(0, 0, width, height);
+
+            // 靶子
+            const targetRadius = Math.min(width, height) * 0.35;
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, targetRadius);
+            gradient.addColorStop(0, '#FEF3C7');
+            gradient.addColorStop(0.7, '#FDE68A');
+            gradient.addColorStop(1, '#FCD34D');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, targetRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 边缘
+            ctx.strokeStyle = '#F59E0B';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, targetRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 内圈
+            ctx.strokeStyle = '#FBBF24';
+            ctx.lineWidth = 2;
+            [0.85, 0.7].forEach(scale => {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, targetRadius * scale, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+
+            // 中心线
+            ctx.strokeStyle = '#EF4444';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 8]);
+            ctx.beginPath();
+            ctx.moveTo(centerX - targetRadius - 30, centerY);
+            ctx.lineTo(centerX + targetRadius + 30, centerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 刻度
+            const tickPositions = [-50, -30, -10, 0, 10, 30, 50];
+            tickPositions.forEach(cents => {
+                const y = centerY + (cents * 3);
+                ctx.strokeStyle = cents === 0 ? '#EF4444' : '#6B7280';
+                ctx.lineWidth = cents === 0 ? 3 : 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX - 20, y);
+                ctx.lineTo(centerX + 20, y);
+                ctx.stroke();
+
+                ctx.fillStyle = '#4B5563';
+                ctx.font = 'bold 10px Inter';
+                ctx.textAlign = 'right';
+                const label = cents === 0 ? '0' : (cents > 0 ? `+${cents}` : cents);
+                ctx.fillText(label, centerX - 28, y + 3);
+            });
+
+            // 标签
+            ctx.fillStyle = '#EF4444';
+            ctx.font = 'bold 12px Nunito';
+            ctx.textAlign = 'center';
+            ctx.fillText('↑ 高音', centerX, centerY - targetRadius - 15);
+
+            ctx.fillStyle = '#3B82F6';
+            ctx.fillText('↓ 低音', centerX, centerY + targetRadius + 20);
+
+            // 靶心
+            const time = Date.now() / 1000;
+            const pulseSize = isAnimating ? Math.sin(time * 3) * 3 : 0;
+
+            ctx.fillStyle = '#EF4444';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 8 + pulseSize, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#FEE2E2';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 12 + pulseSize, 0, Math.PI * 2);
+            ctx.stroke();
+
+            if (hitResult !== null) {
+                drawHitPoint(centerX, centerY, hitResult);
+                drawArrow(centerX, centerY, hitResult);
+            }
+        }
+
+        // ==================== 绘制击中点 ====================
+        function drawHitPoint(centerX, centerY, cents) {
+            const clampedCents = Math.max(-100, Math.min(100, cents));
+            const y = centerY + (clampedCents * 3);
+
+            let color, radius, glowColor;
+            if (Math.abs(cents) <= 10) {
+                color = '#10B981';
+                radius = 14;
+                glowColor = 'rgba(16, 185, 129, 0.4)';
+            } else if (Math.abs(cents) <= 30) {
+                color = '#F59E0B';
+                radius = 12;
+                glowColor = 'rgba(245, 158, 11, 0.4)';
+            } else {
+                color = '#EF4444';
+                radius = 10;
+                glowColor = 'rgba(239, 68, 68, 0.4)';
+            }
+
+            for (let i = 3; i > 0; i--) {
+                ctx.beginPath();
+                ctx.arc(centerX, y, radius * (i + 1) * 0.8, 0, Math.PI * 2);
+                ctx.fillStyle = glowColor;
+                ctx.globalAlpha = 0.3 / i;
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            ctx.beginPath();
+            ctx.arc(centerX, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            if (Math.abs(cents) <= 10) {
+                drawStar(centerX + 30, y, 5, 8, 4);
+                drawStar(centerX - 30, y, 5, 6, 3);
+            }
+        }
+
+        // ==================== 绘制箭头 ====================
+        function drawArrow(centerX, centerY, cents) {
+            const clampedCents = Math.max(-100, Math.min(100, cents));
+            const y = centerY + (clampedCents * 3);
+            const arrowX = centerX - 50;
+            const direction = cents > 0 ? -1 : 1;
+
+            ctx.save();
+            ctx.translate(arrowX, y);
+
+            ctx.fillStyle = cents > 0 ? '#EF4444' : '#3B82F6';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-12, direction * -8);
+            ctx.lineTo(-12, direction * 8);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillRect(-12, -2, 20, 4);
+
+            ctx.beginPath();
+            ctx.moveTo(8, 0);
+            ctx.lineTo(0, direction * -6);
+            ctx.lineTo(0, direction * 6);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // ==================== 绘制星星 ====================
+        function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = -Math.PI / 2;
+            let x = cx;
+            let y = cy;
+            const step = Math.PI / spikes;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+
+            ctx.lineTo(cx, cy - outerRadius);
+            ctx.closePath();
+
+            const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, outerRadius);
+            gradient.addColorStop(0, '#FBBF24');
+            gradient.addColorStop(1, '#F59E0B');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // ==================== 播放示范音 ====================
+        function getRandomNote() {
+            const noteNames = Object.keys(NOTE_FREQUENCIES);
+            const randomIndex = Math.floor(Math.random() * noteNames.length);
+            const noteName = noteNames[randomIndex];
+            return {
+                name: noteName,
+                frequency: NOTE_FREQUENCIES[noteName]
+            };
+        }
+
+        async function playDemoTone() {
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    debugLog('AudioContext 创建成功');
+                }
+
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                    debugLog('AudioContext 已恢复');
+                }
+
+                const note = getRandomNote();
+                currentTargetNote = note.name;
+                currentTargetFrequency = note.frequency;
+
+                document.getElementById('targetNoteDisplay').textContent = `${note.name} (${note.frequency.toFixed(0)} Hz)`;
+                document.getElementById('targetNoteResult').textContent = `${note.name} (${note.frequency.toFixed(0)} Hz)`;
+
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.type = selectedSoundType === 'triangle' || selectedSoundType === 'piano' ? 'triangle' : 'sine';
+                oscillator.frequency.value = currentTargetFrequency;
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                const now = audioContext.currentTime;
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(0.4, now + 0.05);
+                gainNode.gain.linearRampToValueAtTime(0.35, now + 0.1);
+                gainNode.gain.linearRampToValueAtTime(0.35, now + 1.5);
+                gainNode.gain.linearRampToValueAtTime(0.2, now + 2);
+                gainNode.gain.linearRampToValueAtTime(0, now + 2.5);
+
+                oscillator.start(now);
+                oscillator.stop(now + 2.5);
+
+                let animating = true;
+                const animate = () => {
+                    if (!animating) return;
+                    drawTarget(null, true);
+                    requestAnimationFrame(animate);
+                };
+                animate();
+
+                setTimeout(() => {
+                    animating = false;
+                    drawTarget(null, false);
+                }, 2500);
+
+            } catch (error) {
+                debugLog('播放错误: ' + error.message);
+                console.error('Play error:', error);
+            }
+        }
+
+        // ==================== 录音模块 - 修复版 ====================
+        async function startRecording() {
+            try {
+                debugLog('请求麦克风权限...');
+
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+
+                debugLog('麦克风权限已获取');
+
+                audioRecorder = new MediaRecorder(mediaStream);
+                recordedChunks = [];
+
+                audioRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                audioRecorder.start();
+                isRecording = true;
+                debugLog('录音已开始');
+
+            } catch (error) {
+                debugLog('麦克风错误: ' + error.message);
+                console.error('Microphone error:', error);
+
+                // 友好的错误提示
+                const statusEl = document.getElementById('recordingStatus');
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    statusEl.textContent = '❌ 请允许麦克风权限';
+                } else if (error.name === 'NotFoundError') {
+                    statusEl.textContent = '❌ 未找到麦克风设备';
+                } else if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                    statusEl.textContent = '❌ 需要 HTTPS 协议';
+                } else {
+                    statusEl.textContent = '❌ 麦克风访问失败';
+                }
+
+                throw error;
+            }
+        }
+
+        function stopRecording() {
+            return new Promise((resolve) => {
+                if (audioRecorder && audioRecorder.state !== 'inactive') {
+                    audioRecorder.onstop = () => {
+                        const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+                        debugLog('录音已停止，大小: ' + audioBlob.size + ' bytes');
+                        resolve(audioBlob);
+                    };
+
+                    audioRecorder.stop();
+                    if (mediaStream) {
+                        mediaStream.getTracks().forEach(track => track.stop());
+                    }
+                    isRecording = false;
+                }
+            });
+        }
+
+        async function getAudioDataFromBlob(blob) {
+            const arrayBuffer = await blob.arrayBuffer();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            return audioBuffer.getChannelData(0);
+        }
+
+        // ==================== 音高检测 ====================
+        function autocorrelate(buffer, sampleRate) {
+            const SIZE = buffer.length;
+            const MAX_SAMPLES = Math.floor(SIZE / 2);
+            let bestOffset = -1;
+            let bestCorrelation = 0;
+            let rms = 0;
+
+            for (let i = 0; i < SIZE; i++) {
+                rms += buffer[i] * buffer[i];
+            }
+            rms = Math.sqrt(rms / SIZE);
+
+            if (rms < 0.01) return -1;
+
+            let lastCorrelation = 1;
+            let foundGoodCorrelation = false;
+
+            for (let offset = 0; offset < MAX_SAMPLES; offset++) {
+                let correlation = 0;
+
+                for (let i = 0; i < MAX_SAMPLES; i++) {
+                    correlation += Math.abs(buffer[i] - buffer[i + offset]);
+                }
+                correlation = 1 - (correlation / MAX_SAMPLES);
+
+                if (correlation > 0.9 && correlation > lastCorrelation) {
+                    foundGoodCorrelation = true;
+                    if (correlation > bestCorrelation) {
+                        bestCorrelation = correlation;
+                        bestOffset = offset;
+                    }
+                } else if (foundGoodCorrelation) {
+                    return sampleRate / bestOffset;
+                }
+                lastCorrelation = correlation;
+            }
+
+            if (bestCorrelation > 0.01) {
+                return sampleRate / bestOffset;
+            }
+            return -1;
+        }
+
+        function detectPitch(buffer) {
+            const sampleRate = audioContext.sampleRate;
+            const frequency = autocorrelate(buffer, sampleRate);
+
+            if (frequency === -1 || frequency < 80 || frequency > 1200) {
+                return null;
+            }
+            return frequency;
+        }
+
+        function calculateCentsDiff(userFreq, targetFreq) {
+            return Math.round(1200 * Math.log2(userFreq / targetFreq));
+        }
+
+        function findClosestNote(frequency) {
+            let closestNote = null;
+            let minDiff = Infinity;
+
+            for (const [note, freq] of Object.entries(NOTE_FREQUENCIES)) {
+                const diff = Math.abs(frequency - freq);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestNote = { note, freq };
+                }
+            }
+
+            return closestNote;
+        }
+
+        // ==================== 显示结果 ====================
+        function showResult(centsDiff, userPitch) {
+            drawTarget(centsDiff, false);
+
+            const closestNote = findClosestNote(userPitch);
+            document.getElementById('userPitchResult').textContent =
+                `${closestNote.note} (${userPitch.toFixed(0)} Hz)`;
+
+            const diffSpan = document.getElementById('centsDiffResult');
+            if (Math.abs(centsDiff) <= 10) {
+                diffSpan.textContent = `✨ 完美命中 ±${Math.abs(centsDiff)}¢`;
+                diffSpan.className = 'font-bold text-emerald-600';
+            } else if (Math.abs(centsDiff) <= 30) {
+                diffSpan.textContent = `${centsDiff > 0 ? '⬆️' : '⬇️'} ${Math.abs(centsDiff)}¢`;
+                diffSpan.className = 'font-bold text-amber-600';
+            } else {
+                diffSpan.textContent = `${centsDiff > 0 ? '⬆️⬆️' : '⬇️⬇️'} ${Math.abs(centsDiff)}¢`;
+                diffSpan.className = 'font-bold text-red-600';
+            }
+
+            const resultOverlay = document.getElementById('resultOverlay');
+            const resultIcon = document.getElementById('resultIcon');
+            const resultText = document.getElementById('resultText');
+
+            if (Math.abs(centsDiff) <= 10) {
+                resultIcon.textContent = '🎯';
+                resultText.textContent = '完美命中！';
+                resultText.className = 'text-xl font-bold text-emerald-600';
+            } else if (Math.abs(centsDiff) <= 30) {
+                resultIcon.textContent = centsDiff > 0 ? '⬆️' : '⬇️';
+                resultText.textContent = centsDiff > 0 ? '稍微偏高' : '稍微偏低';
+                resultText.className = 'text-xl font-bold text-amber-600';
+            } else {
+                resultIcon.textContent = centsDiff > 0 ? '⬆️⬆️' : '⬇️⬇️';
+                resultText.textContent = centsDiff > 0 ? '偏高很多' : '偏低很多';
+                resultText.className = 'text-xl font-bold text-red-600';
+            }
+
+            resultOverlay.style.opacity = '1';
+            setTimeout(() => {
+                resultOverlay.style.opacity = '0';
+            }, 2000);
+
+            debugLog('检测完成');
+        }
+
+        // ==================== 事件监听 - 修复版 ====================
+        const recordBtn = document.getElementById('recordBtn');
+        const recordingStatus = document.getElementById('recordingStatus');
+
+        // 处理录音开始
+        async function handleStartRecording(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!currentTargetFrequency) {
+                recordingStatus.textContent = '⚠️ 请先播放示范音';
+                return;
+            }
+
+            if (isRecording) {
+                debugLog('已在录音中，忽略');
+                return;
+            }
+
+            try {
+                // 震动反馈
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+
+                recordBtn.classList.add('recording');
+                recordingStatus.textContent = '🎤 正在录音... 松开结束';
+
+                await startRecording();
+
+            } catch (error) {
+                recordBtn.classList.remove('recording');
+                recordingStatus.textContent = '❌ 录音启动失败';
+            }
+        }
+
+        // 处理录音结束
+        async function handleStopRecording(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!isRecording) {
+                debugLog('未在录音中，忽略');
+                return;
+            }
+
+            try {
+                recordBtn.classList.remove('recording');
+                recordingStatus.textContent = '📊 分析中...';
+
+                const audioBlob = await stopRecording();
+                const audioData = await getAudioDataFromBlob(audioBlob);
+                const userPitch = detectPitch(audioData);
+
+                if (userPitch && currentTargetFrequency) {
+                    const centsDiff = calculateCentsDiff(userPitch, currentTargetFrequency);
+                    showResult(centsDiff, userPitch);
+                    recordingStatus.textContent = '✅ 完成！再试一次';
+                } else {
+                    recordingStatus.textContent = '❌ 检测失败，请重试';
+                }
+
+            } catch (error) {
+                debugLog('停止录音错误: ' + error.message);
+                recordingStatus.textContent = '❌ 处理失败';
+            }
+        }
+
+        // 触摸事件
+        recordBtn.addEventListener('touchstart', handleStartRecording, { passive: false });
+        recordBtn.addEventListener('touchend', handleStopRecording, { passive: false });
+        recordBtn.addEventListener('touchcancel', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (isRecording) {
+                await stopRecording();
+                isRecording = false;
+                recordBtn.classList.remove('recording');
+                recordingStatus.textContent = '⚠️ 录音已取消';
+            }
+        }, { passive: false });
+
+        // 鼠标事件（桌面测试）
+        recordBtn.addEventListener('mousedown', handleStartRecording);
+        recordBtn.addEventListener('mouseup', handleStopRecording);
+        recordBtn.addEventListener('mouseleave', async () => {
+            if (isRecording) {
+                await stopRecording();
+                isRecording = false;
+                recordBtn.classList.remove('recording');
+                recordingStatus.textContent = '⚠️ 录音已取消';
+            }
+        });
+
+        recordBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // 其他按钮
+        document.getElementById('playDemoBtn').addEventListener('click', () => {
+            playDemoTone();
+        });
+
+        document.querySelectorAll('.sound-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.sound-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.classList.add('bg-slate-50', 'text-slate-700');
+                });
+
+                const targetBtn = e.currentTarget;
+                targetBtn.classList.add('active');
+                targetBtn.classList.remove('bg-slate-50', 'text-slate-700');
+                selectedSoundType = targetBtn.dataset.sound;
+            });
+        });
+
+        // ==================== 初始化 ====================
+        drawTarget(null, false);
+
+        // 检查 HTTPS
+        if (location.protocol !== 'https:' &&
+            location.hostname !== 'localhost' &&
+            location.hostname !== '127.0.0.1' &&
+            !location.hostname.startsWith('192.168.') &&
+            !location.hostname.startsWith('10.')) {
+            debugLog('警告: 需要 HTTPS 协议访问麦克风');
+            recordingStatus.textContent = '⚠️ 麦克风需要 HTTPS';
+        }
+
+        // 首次交互初始化
+        const initAudio = async () => {
+            if (audioContext && audioContext.state === 'suspended') {
+                await audioContext.resume();
+                debugLog('AudioContext 已初始化');
+            }
+        };
+
+        document.addEventListener('touchstart', initAudio, { once: true });
+        document.addEventListener('click', initAudio, { once: true });
+
+        debugLog('应用已就绪');
+    </script>
+</body>
+</html>
