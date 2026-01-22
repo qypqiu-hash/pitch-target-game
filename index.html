@@ -1,4 +1,3 @@
-更新为实时射击版
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -40,6 +39,16 @@
             }
         }
 
+        @keyframes target-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 0.7; }
+        }
+
+        @keyframes ready-flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
         .record-btn.recording {
             animation: recording-pulse 1.5s ease-out infinite;
             background: linear-gradient(to bottom, #dc2626, #b91c1c);
@@ -77,6 +86,23 @@
             color: #64748b;
             word-break: break-all;
         }
+
+        .perfect-hit-text {
+            position: absolute;
+            font-size: 32px;
+            font-weight: 800;
+            color: #10B981;
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.8), 0 4px 8px rgba(0,0,0,0.5);
+            animation: perfect-hit-anim 1.5s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes perfect-hit-anim {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen flex flex-col items-center p-3 pb-6 text-white">
@@ -85,7 +111,7 @@
         <h1 class="text-3xl font-extrabold bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 bg-clip-text text-transparent mb-1">
             🏹 音高射靶
         </h1>
-        <p class="text-slate-400 text-xs">实时射击版 - 按住录音，箭随音高飞行</p>
+        <p class="text-slate-400 text-xs">实时射击版 - 我开口，箭就飞</p>
     </header>
 
     <div class="w-full max-w-lg bg-slate-800/50 backdrop-blur rounded-2xl shadow-xl p-3 mb-3 border border-slate-700 relative">
@@ -137,11 +163,11 @@
 
         <button id="recordBtn" class="record-btn w-full bg-gradient-to-br from-red-600 to-red-700 active:from-red-700 active:to-red-800 active:scale-95 text-white text-base font-bold rounded-2xl transition-all shadow-lg flex flex-col items-center justify-center gap-2 select-none mb-2">
             <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg>
-            <span>按住射击</span>
+            <span>按住准备</span>
         </button>
 
         <p id="recordingStatus" class="text-center text-sm text-slate-400 min-h-[20px]">
-            先播放目标音，然后按住录音开始射击
+            播放目标音，按住按钮，开口射击
         </p>
 
         <p id="debugInfo" class="text-center text-xs text-slate-500 mt-1 hidden"></p>
@@ -149,7 +175,7 @@
 
     <div class="w-full max-w-lg text-center pb-2">
         <p class="text-xs text-slate-500">
-            💡 播放目标音 → 按住射击 → 调整音高控制方向 → 松开命中
+            💡 听音 → 按住 → 开口箭飞 → 停声命中
         </p>
     </div>
 
@@ -177,6 +203,9 @@
         let mediaStream = null;
         let isRecording = false;
         let isFlying = false;
+        let isDemoPlaying = false;
+        let demoEndedTime = 0;
+        let isWaitingForSound = false;
 
         let arrow = {
             x: 0,
@@ -186,11 +215,14 @@
             trail: [],
             speed: 0,
             color: '#f59e0b',
-            isHit: false
+            isHit: false,
+            isPinned: false
         };
 
         let pitchHistory = [];
         const PITCH_SMOOTHING = 5;
+        let silenceFrames = 0;
+        const SILENCE_THRESHOLD = 8;
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -213,7 +245,7 @@
         window.addEventListener('resize', resizeCanvas);
         setTimeout(resizeCanvas, 100);
 
-        function drawTarget(isHit = false) {
+        function drawTarget(isHit = false, isPulsing = false, isReady = false) {
             const width = canvas.getBoundingClientRect().width;
             const height = canvas.getBoundingClientRect().height;
             const centerX = width * 0.75;
@@ -221,27 +253,48 @@
 
             ctx.clearRect(0, 0, width, height);
 
-            // 发射台
+            ctx.save();
+            if (isPulsing) {
+                const pulseScale = 1 + Math.sin(Date.now() / 150) * 0.08;
+                ctx.translate(centerX, centerY);
+                ctx.scale(pulseScale, pulseScale);
+                ctx.translate(-centerX, -centerY);
+            }
+
+            if (isReady) {
+                const flashOpacity = 0.5 + Math.sin(Date.now() / 100) * 0.5;
+                ctx.globalAlpha = flashOpacity;
+            }
+
             ctx.fillStyle = '#374151';
             ctx.fillRect(0, centerY - 50, 60, 100);
             ctx.strokeStyle = '#f59e0b';
             ctx.lineWidth = 2;
             ctx.strokeRect(0, centerY - 50, 60, 100);
 
-            // 弓
             ctx.strokeStyle = '#92400e';
             ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.arc(30, centerY, 40, -Math.PI / 2, Math.PI / 2);
             ctx.stroke();
 
-            // 靶子
-            const targetRadius = 100;
+            const targetRadius = isHit ? 110 : 100;
             const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, targetRadius);
-            gradient.addColorStop(0, isHit ? 'rgba(16, 185, 129, 0.3)' : '#FEF3C7');
-            gradient.addColorStop(0.7, '#FDE68A');
-            gradient.addColorStop(1, '#FCD34D');
+            if (isHit) {
+                gradient.addColorStop(0, 'rgba(16, 185, 129, 0.5)');
+                gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.3)');
+                gradient.addColorStop(1, 'rgba(16, 185, 129, 0.1)');
+            } else if (isPulsing) {
+                gradient.addColorStop(0, 'rgba(251, 191, 36, 0.4)');
+                gradient.addColorStop(0.7, '#FDE68A');
+                gradient.addColorStop(1, '#FCD34D');
+            } else {
+                gradient.addColorStop(0, '#FEF3C7');
+                gradient.addColorStop(0.7, '#FDE68A');
+                gradient.addColorStop(1, '#FCD34D');
+            }
             ctx.fillStyle = gradient;
+            ctx.globalAlpha = 1;
             ctx.beginPath();
             ctx.arc(centerX, centerY, targetRadius, 0, Math.PI * 2);
             ctx.fill();
@@ -254,18 +307,26 @@
                 ctx.stroke();
             }
 
-            ctx.fillStyle = '#EF4444';
+            ctx.fillStyle = isHit ? '#10B981' : '#EF4444';
             ctx.beginPath();
-            ctx.arc(centerX, centerY, 12, 0, Math.PI * 2);
+            ctx.arc(centerX, centerY, isHit ? 16 : 12, 0, Math.PI * 2);
             ctx.fill();
 
             if (isHit) {
                 ctx.strokeStyle = '#10B981';
-                ctx.lineWidth = 3;
+                ctx.lineWidth = 4;
                 ctx.beginPath();
-                ctx.arc(centerX, centerY, 20, 0, Math.PI * 2);
+                ctx.arc(centerX, centerY, 25, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#10B981';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 35, 0, Math.PI * 2);
                 ctx.stroke();
             }
+
+            ctx.restore();
 
             return { centerX, centerY, targetRadius };
         }
@@ -316,6 +377,21 @@
             ctx.restore();
         }
 
+        function showPerfectHitText(x, y) {
+            const canvasRect = canvas.getBoundingClientRect();
+            const existing = document.querySelector('.perfect-hit-text');
+            if (existing) existing.remove();
+
+            const textEl = document.createElement('div');
+            textEl.className = 'perfect-hit-text';
+            textEl.textContent = '完美 🎯';
+            textEl.style.left = (canvasRect.left + x) + 'px';
+            textEl.style.top = (canvasRect.top + y) + 'px';
+            document.body.appendChild(textEl);
+
+            setTimeout(() => textEl.remove(), 1500);
+        }
+
         function getRandomNote() {
             const noteNames = Object.keys(NOTE_FREQUENCIES);
             const randomIndex = Math.floor(Math.random() * noteNames.length);
@@ -341,6 +417,9 @@
 
                 document.getElementById('targetNoteDisplay').textContent = `${note.name} (${note.frequency.toFixed(0)} Hz)`;
 
+                isDemoPlaying = true;
+                demoEndedTime = 0;
+
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
 
@@ -352,11 +431,20 @@
                 const now = audioContext.currentTime;
                 gainNode.gain.setValueAtTime(0, now);
                 gainNode.gain.linearRampToValueAtTime(0.4, now + 0.05);
-                gainNode.gain.linearRampToValueAtTime(0.4, now + 1.5);
-                gainNode.gain.linearRampToValueAtTime(0, now + 2);
+                gainNode.gain.linearRampToValueAtTime(0.3, now + 0.9);
+                gainNode.gain.linearRampToValueAtTime(0, now + 1);
 
                 oscillator.start(now);
-                oscillator.stop(now + 2);
+                oscillator.stop(now + 1);
+
+                oscillator.onended = () => {
+                    isDemoPlaying = false;
+                    demoEndedTime = Date.now();
+                    const statusEl = document.getElementById('recordingStatus');
+                    if (isRecording && !isFlying) {
+                        statusEl.textContent = '🎯 准备好了！开口射击';
+                    }
+                };
 
             } catch (error) {
                 debugLog('播放错误: ' + error.message);
@@ -441,8 +529,10 @@
                 source.connect(analyser);
 
                 isRecording = true;
-                isFlying = true;
+                isWaitingForSound = true;
+                isFlying = false;
                 pitchHistory = [];
+                silenceFrames = 0;
 
                 const width = canvas.getBoundingClientRect().width;
                 const height = canvas.getBoundingClientRect().height;
@@ -454,6 +544,7 @@
                 arrow.trail = [];
                 arrow.color = '#f59e0b';
                 arrow.isHit = false;
+                arrow.isPinned = false;
 
                 detectPitchLoop();
 
@@ -488,7 +579,22 @@
             analyser.getFloatTimeDomainData(buffer);
 
             const pitch = detectPitch(buffer);
-            if (pitch && currentTargetFrequency) {
+            const statusEl = document.getElementById('recordingStatus');
+
+            if (isWaitingForSound) {
+                if (pitch) {
+                    isWaitingForSound = false;
+                    isFlying = true;
+                    silenceFrames = 0;
+                    statusEl.textContent = '🏹 箭在飞行！调整音高';
+                    if (navigator.vibrate) {
+                        navigator.vibrate(30);
+                    }
+                }
+            }
+
+            if (isFlying && pitch && currentTargetFrequency) {
+                silenceFrames = 0;
                 const smoothedPitch = smoothPitch(pitch);
                 const centsDiff = calculateCentsDiff(smoothedPitch, currentTargetFrequency);
 
@@ -503,41 +609,48 @@
                 } else {
                     arrow.color = '#EF4444';
                 }
+            } else if (isFlying) {
+                silenceFrames++;
+                if (silenceFrames >= SILENCE_THRESHOLD) {
+                    stopRecording();
+                    return;
+                }
             }
 
-            setTimeout(detectPitchLoop, 80);
+            setTimeout(detectPitchLoop, 60);
         }
 
         function stopRecording() {
-            return new Promise((resolve) => {
-                if (!isRecording) {
-                    resolve();
-                    return;
-                }
+            if (!isRecording) return Promise.resolve();
 
-                isRecording = false;
+            isRecording = false;
+            isFlying = false;
+            arrow.isPinned = true;
 
-                setTimeout(() => {
-                    isFlying = false;
-                    if (mediaStream) {
-                        mediaStream.getTracks().forEach(track => track.stop());
-                    }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
 
-                    const height = canvas.getBoundingClientRect().height;
-                    const centerY = height / 2;
-                    const finalCents = Math.round((arrow.y - centerY) / 2.5);
+            const height = canvas.getBoundingClientRect().height;
+            const centerY = height / 2;
+            const finalCents = Math.round((arrow.y - centerY) / 2.5);
 
-                    showResult(finalCents);
-                    debugLog('命中: ' + finalCents + ' cents');
-                    resolve();
-                }, 300);
-            });
+            showResult(finalCents);
+            debugLog('命中: ' + finalCents + ' cents');
+
+            return Promise.resolve();
         }
 
         function showResult(centsDiff) {
             const isHit = Math.abs(centsDiff) <= 10;
 
             if (isHit) {
+                arrow.isHit = true;
+                const canvasRect = canvas.getBoundingClientRect();
+                const targetX = canvasRect.width * 0.75;
+                const targetY = canvasRect.height / 2;
+                showPerfectHitText(targetX, targetY);
+
                 const targetEl = document.querySelector('canvas');
                 targetEl.classList.add('target-hit');
                 setTimeout(() => targetEl.classList.remove('target-hit'), 600);
@@ -572,7 +685,8 @@
         }
 
         function gameLoop() {
-            drawTarget(arrow.isHit);
+            const isReady = (demoEndedTime > 0) && (Date.now() - demoEndedTime < 2000) && isRecording && !isFlying && !arrow.isPinned;
+            drawTarget(arrow.isHit, isDemoPlaying, isReady);
 
             if (isFlying && arrow.x < arrow.targetX) {
                 arrow.x += arrow.speed;
@@ -581,7 +695,7 @@
                     arrow.trail.shift();
                 }
                 drawArrow();
-            } else if (!isFlying && arrow.trail.length > 0) {
+            } else if (arrow.isPinned && arrow.trail.length > 0) {
                 drawArrow();
             }
 
@@ -611,7 +725,7 @@
                 }
 
                 recordBtn.classList.add('recording');
-                statusEl.textContent = '🏹 箭在飞行... 调整音高控制方向';
+                statusEl.textContent = isDemoPlaying ? '🎵 听音中... 等示范结束' : '🎯 准备好了！开口射击';
 
                 await startRecording();
 
@@ -632,10 +746,15 @@
 
             try {
                 recordBtn.classList.remove('recording');
-                statusEl.textContent = '🎯 命中结算中...';
 
-                await stopRecording();
-                statusEl.textContent = '✅ 完成！再试一次';
+                if (isWaitingForSound) {
+                    stopRecording();
+                    statusEl.textContent = '❌ 未检测到声音';
+                } else {
+                    statusEl.textContent = '🎯 命中结算中...';
+                    await new Promise(r => setTimeout(r, 500));
+                    statusEl.textContent = '✅ 完成！再试一次';
+                }
 
             } catch (error) {
                 debugLog('停止失败: ' + error.message);
@@ -650,11 +769,7 @@
             e.stopPropagation();
 
             if (isRecording) {
-                isRecording = false;
-                isFlying = false;
-                if (mediaStream) {
-                    mediaStream.getTracks().forEach(track => track.stop());
-                }
+                stopRecording();
                 recordBtn.classList.remove('recording');
                 debugLog('录音已取消');
             }
@@ -664,11 +779,7 @@
         recordBtn.addEventListener('mouseup', handleStop);
         recordBtn.addEventListener('mouseleave', async () => {
             if (isRecording) {
-                isRecording = false;
-                isFlying = false;
-                if (mediaStream) {
-                    mediaStream.getTracks().forEach(track => track.stop());
-                }
+                stopRecording();
                 recordBtn.classList.remove('recording');
                 debugLog('录音已取消');
             }
