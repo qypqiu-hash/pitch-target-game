@@ -191,13 +191,17 @@
         };
 
         function resizeCanvas() {
-            canvas.width = window.innerWidth * window.devicePixelRatio;
-            canvas.height = window.innerHeight * window.devicePixelRatio;
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            ctx.scale(dpr, dpr);
 
-            target.x = window.innerWidth / 2;
-            target.y = window.innerHeight * 0.35;
-            target.radius = Math.min(200, window.innerWidth * 0.35, window.innerHeight * 0.25);
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+
+            target.x = screenWidth / 2;
+            target.y = screenHeight * 0.38;
+            target.radius = Math.min(180, screenWidth * 0.32, screenHeight * 0.22);
         }
 
         window.addEventListener('resize', resizeCanvas);
