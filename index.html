@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🎵 音准训练大师</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+    <title>🎵 音准节奏游戏</title>
     <style>
         * {
             margin: 0;
@@ -15,179 +13,405 @@
             -webkit-user-select: none;
             user-select: none;
         }
-
         body {
-            font-family: 'Nunito', sans-serif;
             overflow: hidden;
             touch-action: none;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
         }
-
-        .glass-btn {
-            background: rgba(99, 102, 241, 0.2);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            transition: all 0.3s ease;
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
         }
-
-        .glass-btn:hover {
-            background: rgba(99, 102, 241, 0.3);
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+        }
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: white;
+        }
+        .btn:hover {
             transform: scale(1.05);
         }
-
-        .glass-btn.active {
-            background: rgba(139, 92, 246, 0.4);
-            border-color: rgba(139, 92, 246, 0.6);
-            box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+        .btn:active {
+            transform: scale(0.98);
         }
-
-        .record-btn {
-            transition: all 0.3s ease;
+        .btn-sound {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-
-        .record-btn.recording {
-            animation: record-pulse 1.5s ease-in-out infinite;
-            box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
+        .btn-sound.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 0 15px rgba(245, 87, 108, 0.5);
         }
-
-        @keyframes record-pulse {
+        .btn-start {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        .level-select {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-level {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-level.active {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-color: transparent;
+        }
+        .bottom-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+        }
+        .sing-btn {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            border: 4px solid rgba(255,255,255,0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px rgba(238, 90, 36, 0.4);
+        }
+        .sing-btn:hover {
+            transform: scale(1.05);
+        }
+        .sing-btn.singing {
+            animation: sing-pulse 0.5s ease-in-out infinite;
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.8);
+        }
+        @keyframes sing-pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
-
+        .sing-btn .icon {
+            font-size: 36px;
+        }
+        .sing-btn .text {
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            margin-top: 4px;
+        }
+        .game-info {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: white;
+            z-index: 100;
+        }
+        .game-info .score {
+            font-size: 28px;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .game-info .combo {
+            font-size: 18px;
+            color: #ffd700;
+            font-weight: 600;
+        }
+        .game-info .hint {
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 4px;
+        }
         .result-overlay {
-            animation: fade-in 0.3s ease-out;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
         }
-
-        @keyframes fade-in {
-            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
-            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        .result-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
         }
-
-        .stat-card {
+        .result-panel {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 20px;
+            padding: 30px 40px;
+            text-align: center;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+        }
+        .result-overlay.show .result-panel {
+            transform: scale(1);
+        }
+        .result-panel .emoji {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        .result-panel .title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .result-panel .subtitle {
+            font-size: 16px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 20px;
+        }
+        .result-panel .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .result-panel .stat {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 12px;
+        }
+        .result-panel .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .result-panel .stat-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 4px;
+        }
+        .result-panel .btn-restart {
+            padding: 14px 40px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+        }
+        .pitch-indicator {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.6);
             backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 14px;
+            z-index: 100;
         }
-
-        #gameCanvas {
-            display: block;
+        .pitch-indicator .value {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+        }
+        .pitch-indicator .label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            text-align: center;
+            margin-top: 4px;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-[#1E1E2F] via-[#2B2B3D] to-[#1E1E2F] min-h-screen flex flex-col">
+<body>
 
-    <canvas id="gameCanvas" class="fixed inset-0"></canvas>
+    <canvas id="gameCanvas"></canvas>
 
-    <!-- 顶部按钮区域 -->
-    <div class="fixed top-0 left-0 right-0 z-20 p-4">
-        <div class="max-w-2xl mx-auto">
-            <!-- 播放目标音按钮 -->
-            <div class="flex justify-center mb-4">
-                <button id="playTargetBtn" class="glass-btn px-6 py-3 rounded-full text-white font-bold flex items-center gap-2 shadow-lg">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                    </svg>
-                    <span>播放目标音</span>
-                </button>
-            </div>
+    <div class="top-bar">
+        <div class="level-select">
+            <button class="btn btn-level active" data-level="1">关卡1</button>
+            <button class="btn btn-level" data-level="2">关卡2</button>
+            <button class="btn btn-level" data-level="3">关卡3</button>
+        </div>
+        <button class="btn btn-sound active" data-sound="triangle">🎹 三角波</button>
+        <button class="btn btn-sound" data-sound="sine">🎵 正弦波</button>
+        <button class="btn btn-start" id="startBtn">▶ 开始游戏</button>
+    </div>
 
-            <!-- 音色选择按钮 -->
-            <div class="flex justify-center gap-2">
-                <button class="glass-btn active w-12 h-12 rounded-full flex items-center justify-center text-white text-xl shadow-md" data-sound="triangle" title="三角波">
-                    🎹
-                </button>
-                <button class="glass-btn w-12 h-12 rounded-full flex items-center justify-center text-white text-xl shadow-md" data-sound="sine" title="正弦波">
-                    🎵
-                </button>
-                <button class="glass-btn w-12 h-12 rounded-full flex items-center justify-center text-white text-xl shadow-md" data-sound="piano" title="钢琴">
-                    🎼
-                </button>
-                <button class="glass-btn w-12 h-12 rounded-full flex items-center justify-center text-white text-xl shadow-md" data-sound="voice" title="人声">
-                    🎤
-                </button>
-            </div>
+    <div class="game-info">
+        <div class="score" id="scoreDisplay">得分: 0</div>
+        <div class="combo" id="comboDisplay"></div>
+        <div class="hint" id="hintDisplay">点击"开始游戏"开始</div>
+    </div>
 
-            <!-- 目标音显示 -->
-            <div class="text-center mt-3">
-                <p id="targetNoteDisplay" class="text-white/60 text-sm">点击播放目标音开始训练</p>
-            </div>
+    <div class="pitch-indicator">
+        <div class="value" id="pitchValue">--</div>
+        <div class="label">当前音高</div>
+    </div>
+
+    <div class="bottom-area">
+        <div class="sing-btn" id="singBtn">
+            <div class="icon">🎤</div>
+            <div class="text">按住发声</div>
         </div>
     </div>
 
-    <!-- 底部录音按钮 -->
-    <div class="fixed bottom-0 left-0 right-0 z-20 p-6 pb-8">
-        <div class="flex flex-col items-center gap-2">
-            <button id="recordBtn" class="record-btn w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-xl flex items-center justify-center text-white">
-                <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="6"/>
-                </svg>
-            </button>
-            <p id="recordStatus" class="text-white/60 text-sm">按住发声</p>
-        </div>
-    </div>
-
-    <!-- 结果弹窗 -->
-    <div id="resultOverlay" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 hidden result-overlay">
-        <div class="bg-[#2B2B3D]/95 rounded-3xl p-8 shadow-2xl border border-white/10 max-w-sm mx-4">
-            <div id="resultIcon" class="text-7xl mb-4 text-center"></div>
-            <h2 id="resultTitle" class="text-3xl font-bold text-center mb-2 text-white"></h2>
-            <p id="resultDetail" class="text-white/60 text-center mb-6"></p>
-
-            <!-- 统计数据 -->
-            <div class="grid grid-cols-3 gap-3 mb-6">
-                <div class="stat-card rounded-xl p-3 text-center">
-                    <div id="statPerfect" class="text-2xl font-bold text-emerald-400">0</div>
-                    <div class="text-xs text-white/50 mt-1">完美</div>
+    <div class="result-overlay" id="resultOverlay">
+        <div class="result-panel">
+            <div class="emoji" id="resultEmoji">🎯</div>
+            <div class="title" id="resultTitle">游戏结束</div>
+            <div class="subtitle" id="resultSubtitle">你的音准训练完成</div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" style="color: #4ade80;" id="statPerfect">0</div>
+                    <div class="stat-label">完美</div>
                 </div>
-                <div class="stat-card rounded-xl p-3 text-center">
-                    <div id="statClose" class="text-2xl font-bold text-amber-400">0</div>
-                    <div class="text-xs text-white/50 mt-1">接近</div>
+                <div class="stat">
+                    <div class="stat-value" style="color: #fbbf24;" id="statGood">0</div>
+                    <div class="stat-label">接近</div>
                 </div>
-                <div class="stat-card rounded-xl p-3 text-center">
-                    <div id="statOff" class="text-2xl font-bold text-red-400">0</div>
-                    <div class="text-xs text-white/50 mt-1">偏离</div>
+                <div class="stat">
+                    <div class="stat-value" style="color: #f87171;" id="statMiss">0</div>
+                    <div class="stat-label">偏离</div>
                 </div>
             </div>
-
-            <button id="closeResult" class="w-full py-3 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white font-bold rounded-xl shadow-lg">
-                再来一局
-            </button>
+            <button class="btn-restart" id="restartBtn">再来一次</button>
         </div>
     </div>
 
     <script>
+        // ==================== 音符频率表 ====================
         const NOTE_FREQUENCIES = {
-            'C3': 130.81, 'C#3': 138.59, 'D3': 146.83, 'D#3': 155.56, 'E3': 164.81, 'F3': 174.61, 'F#3': 185.00, 'G3': 196.00, 'G#3': 207.65, 'A3': 220.00, 'A#3': 233.08, 'B3': 246.94,
-            'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88,
-            'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25, 'E5': 659.25, 'F5': 698.46, 'F#5': 739.99, 'G5': 783.99, 'G#5': 830.61, 'A5': 880.00, 'A#5': 932.33, 'B5': 987.77,
-            'C6': 1046.50
+            'C3': 130.81, 'D3': 146.83, 'E3': 164.81, 'F3': 174.61, 'G3': 196.00, 'A3': 220.00, 'B3': 246.94,
+            'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88,
+            'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99, 'A5': 880.00, 'B5': 987.77
         };
 
+        // ==================== 关卡旋律配置 ====================
+        const LEVELS = {
+            1: {
+                name: '单音训练',
+                speed: 1.5,
+                showNoteName: true,
+                melodies: [
+                    [{ note: 'C4', duration: 2000 }],
+                    [{ note: 'E4', duration: 2000 }],
+                    [{ note: 'G4', duration: 2000 }],
+                    [{ note: 'A4', duration: 2000 }]
+                ]
+            },
+            2: {
+                name: '相邻音阶',
+                speed: 2.5,
+                showNoteName: false,
+                melodies: [
+                    [
+                        { note: 'C4', duration: 800 },
+                        { note: 'D4', duration: 800 },
+                        { note: 'E4', duration: 800 }
+                    ],
+                    [
+                        { note: 'E4', duration: 800 },
+                        { note: 'F4', duration: 800 },
+                        { note: 'G4', duration: 800 }
+                    ],
+                    [
+                        { note: 'G4', duration: 800 },
+                        { note: 'A4', duration: 800 },
+                        { note: 'G4', duration: 800 }
+                    ]
+                ]
+            },
+            3: {
+                name: '短旋律',
+                speed: 3.5,
+                showNoteName: false,
+                melodies: [
+                    [
+                        { note: 'E4', duration: 600 },
+                        { note: 'D4', duration: 600 },
+                        { note: 'E4', duration: 600 },
+                        { note: 'G4', duration: 800 }
+                    ],
+                    [
+                        { note: 'C4', duration: 500 },
+                        { note: 'E4', duration: 500 },
+                        { note: 'G4', duration: 500 },
+                        { note: 'C5', duration: 600 },
+                        { note: 'G4', duration: 500 }
+                    ],
+                    [
+                        { note: 'G4', duration: 500 },
+                        { note: 'E4', duration: 500 },
+                        { note: 'C4', duration: 500 },
+                        { note: 'E4', duration: 500 },
+                        { note: 'D4', duration: 800 },
+                        { note: 'C4', duration: 600 }
+                    ]
+                ]
+            }
+        };
+
+        // ==================== 全局状态 ====================
         let audioContext = null;
         let analyser = null;
         let mediaStream = null;
-        let currentTargetFrequency = null;
-        let currentTargetNote = null;
         let selectedSoundType = 'triangle';
-        let isRecording = false;
-        let isDemoPlaying = false;
+        let currentLevel = 1;
+        let gameRunning = false;
+        let isSinging = false;
 
-        const arrows = [];
-        const landedPoints = [];
-        const PITCH_SMOOTHING = 3;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let stats = { perfect: 0, good: 0, miss: 0 };
+
+        let currentMelody = [];
+        let melodyIndex = 0;
+        let gameNotes = [];      // 滚动的音符
+        let hitPoints = [];      // 命中点
+        let missIndicators = []; // 偏离指示器
+        let waveRings = [];      // 音浪环
+
         let pitchHistory = [];
-        let lastArrowTime = 0;
-        const ARROW_INTERVAL = 120;
+        const PITCH_SMOOTHING = 3;
+        const CENTS_THRESHOLD = 30;  // 命中判定：±30 cents
+        const GOOD_CENTS_THRESHOLD = 50; // 接近判定
 
+        // ==================== Canvas 设置 ====================
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        let target = {
-            x: 0,
+        let staff = {
             y: 0,
-            radius: 0,
-            pulsePhase: 0,
-            waveRings: []
+            lineSpacing: 20,
+            numLines: 5,
+            judgeX: 0
         };
 
         function resizeCanvas() {
@@ -196,93 +420,73 @@
             canvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
 
-            const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-
-            target.x = screenWidth / 2;
-            target.y = screenHeight * 0.38;
-            target.radius = Math.min(180, screenWidth * 0.32, screenHeight * 0.22);
+            staff.y = window.innerHeight * 0.38;
+            staff.lineSpacing = Math.min(25, window.innerHeight * 0.035);
+            staff.judgeX = window.innerWidth * 0.3;
         }
 
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        function getRandomNote() {
-            const noteNames = Object.keys(NOTE_FREQUENCIES);
-            const randomIndex = Math.floor(Math.random() * noteNames.length);
-            const noteName = noteNames[randomIndex];
-            return { name: noteName, frequency: NOTE_FREQUENCIES[noteName] };
-        }
-
-        async function playDemoTone() {
-            try {
-                if (!audioContext) {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
-
-                const note = getRandomNote();
-                currentTargetNote = note.name;
-                currentTargetFrequency = note.frequency;
-
-                document.getElementById('targetNoteDisplay').textContent = `目标音: ${note.name} (${note.frequency.toFixed(0)} Hz)`;
-
-                isDemoPlaying = true;
-                target.waveRings = [];
-
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                const analyserNode = audioContext.createAnalyser();
-
-                oscillator.type = selectedSoundType === 'triangle' || selectedSoundType === 'piano' ? 'triangle' : 'sine';
-                oscillator.frequency.value = currentTargetFrequency;
-                oscillator.connect(gainNode);
-                gainNode.connect(analyserNode);
-                analyserNode.connect(audioContext.destination);
-
-                analyserNode.fftSize = 256;
-
-                const dataArray = new Uint8Array(analyserNode.frequencyBinCount);
-
-                const updateWave = () => {
-                    if (!isDemoPlaying) return;
-                    analyserNode.getByteFrequencyData(dataArray);
-                    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-                    const amplitude = (average / 255) * target.radius * 0.5;
-
-                    if (amplitude > 5) {
-                        target.waveRings.push({
-                            radius: target.radius,
-                            amplitude: amplitude,
-                            opacity: 0.6,
-                            phase: 0
-                        });
-                    }
-
-                    requestAnimationFrame(updateWave);
-                };
-                updateWave();
-
-                const now = audioContext.currentTime;
-                gainNode.gain.setValueAtTime(0, now);
-                gainNode.gain.linearRampToValueAtTime(0.35, now + 0.05);
-                gainNode.gain.linearRampToValueAtTime(0.3, now + 0.9);
-                gainNode.gain.linearRampToValueAtTime(0, now + 1);
-
-                oscillator.start(now);
-                oscillator.stop(now + 1);
-
-                oscillator.onended = () => {
-                    isDemoPlaying = false;
-                };
-
-            } catch (error) {
-                console.error('Play error:', error);
+        // ==================== 音频系统 ====================
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
             }
         }
 
+        function playDemoTone(noteName, duration = 500) {
+            return new Promise((resolve) => {
+                initAudio();
+
+                const freq = NOTE_FREQUENCIES[noteName];
+                if (!freq) { resolve(); return; }
+
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+
+                osc.type = selectedSoundType === 'triangle' ? 'triangle' : 'sine';
+                osc.frequency.value = freq;
+
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+
+                const now = audioContext.currentTime;
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
+                gain.gain.linearRampToValueAtTime(0.25, now + duration / 1000 - 0.1);
+                gain.gain.linearRampToValueAtTime(0, now + duration / 1000);
+
+                osc.start(now);
+                osc.stop(now + duration / 1000);
+
+                // 音浪效果
+                createWaveRings(duration / 1000);
+
+                osc.onended = resolve;
+            });
+        }
+
+        function createWaveRings(duration) {
+            const startTime = Date.now();
+            const interval = setInterval(() => {
+                if (Date.now() - startTime > duration * 1000) {
+                    clearInterval(interval);
+                    return;
+                }
+                waveRings.push({
+                    radius: staff.lineSpacing * 2.5,
+                    maxRadius: staff.lineSpacing * 8,
+                    opacity: 0.6,
+                    phase: 0
+                });
+            }, 100);
+        }
+
+        // ==================== 音高检测 ====================
         function autocorrelate(buffer, sampleRate) {
             const SIZE = buffer.length;
             const MAX_SAMPLES = Math.floor(SIZE / 2);
@@ -328,7 +532,7 @@
         }
 
         function calculateCentsDiff(userFreq, targetFreq) {
-            return Math.round(1200 * Math.log2(userFreq / targetFreq));
+            return 1200 * Math.log2(userFreq / targetFreq);
         }
 
         function smoothPitch(pitch) {
@@ -336,111 +540,385 @@
             if (pitchHistory.length > PITCH_SMOOTHING) {
                 pitchHistory.shift();
             }
-            const sum = pitchHistory.reduce((a, b) => a + b, 0);
-            return sum / pitchHistory.length;
+            return pitchHistory.reduce((a, b) => a + b, 0) / pitchHistory.length;
         }
 
-        function getCentsColor(cents) {
-            if (Math.abs(cents) <= 10) return '#10B981';
-            if (Math.abs(cents) <= 30) return '#F59E0B';
-            return '#EF4444';
+        function frequencyToNoteName(freq) {
+            let minDiff = Infinity;
+            let closestNote = null;
+
+            for (const [note, noteFreq] of Object.entries(NOTE_FREQUENCIES)) {
+                const diff = Math.abs(freq - noteFreq);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestNote = note;
+                }
+            }
+            return closestNote;
         }
 
-        function getCentsCategory(cents) {
-            if (Math.abs(cents) <= 10) return 'perfect';
-            if (Math.abs(cents) <= 30) return 'close';
-            return 'off';
+        // ==================== 五线谱系统 ====================
+        function noteToYPosition(noteName) {
+            const noteOrder = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+            const note = noteName.slice(0, -1);
+            const octave = parseInt(noteName.slice(-1));
+
+            const baseLine = 4; // G4在第五线（索引4）
+            const g4Index = noteOrder.indexOf('G');
+            const currentIndex = noteOrder.indexOf(note);
+
+            // C4在第一间下面
+            const c4Position = 2; // 相对于五线谱中心的偏移
+            const noteOffset = currentIndex - noteOrder.indexOf('C');
+            const octaveOffset = (octave - 4) * 7;
+
+            const positionIndex = c4Position + noteOffset + octaveOffset;
+            return staff.y - positionIndex * (staff.lineSpacing / 2);
         }
 
-        class Arrow {
-            constructor(startX, startY, targetX, targetY, cents) {
-                this.x = startX;
-                this.y = startY;
-                this.targetX = targetX;
-                this.targetY = targetY;
-                this.cents = cents;
-                this.color = getCentsColor(cents);
-                this.progress = 0;
-                this.speed = 0.04;
-                this.landed = false;
-                this.trail = [];
+        function drawStaff() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 1.5;
+
+            // 绘制五条线
+            for (let i = 0; i < staff.numLines; i++) {
+                const y = staff.y + i * staff.lineSpacing;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(window.innerWidth, y);
+                ctx.stroke();
+            }
+
+            // 绘制高音谱号（简化）
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = `${staff.lineSpacing * 5}px serif`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('𝄞', 20, staff.y + staff.lineSpacing * 1.5);
+
+            // 绘制判定线
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 5]);
+            ctx.beginPath();
+            ctx.moveTo(staff.judgeX, staff.y - staff.lineSpacing * 3);
+            ctx.lineTo(staff.judgeX, staff.y + staff.lineSpacing * 5);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 判定线标签
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('判定线', staff.judgeX, staff.y - staff.lineSpacing * 3.5);
+        }
+
+        // ==================== 音符类 ====================
+        class GameNote {
+            constructor(noteName, duration, speed) {
+                this.noteName = noteName;
+                this.frequency = NOTE_FREQUENCIES[noteName];
+                this.duration = duration;
+                this.targetY = noteToYPosition(noteName);
+                this.x = window.innerWidth + 100;
+                this.speed = speed;
+                this.hit = false;
+                this.missed = false;
+                this.demoPlayed = false;
             }
 
             update() {
-                if (this.landed) return;
+                this.x -= this.speed;
 
-                this.progress += this.speed;
-                this.trail.push({ x: this.x, y: this.y, progress: this.progress });
-                if (this.trail.length > 12) this.trail.shift();
-
-                this.x += (this.targetX - this.x) * this.speed;
-                this.y += (this.targetY - this.y) * this.speed;
-
-                if (this.progress >= 1 || Math.abs(this.x - this.targetX) < 3) {
-                    this.landed = true;
-                    this.x = this.targetX;
-                    this.y = this.targetY;
-                    landedPoints.push({
-                        x: this.x,
-                        y: this.y,
-                        cents: this.cents,
-                        color: this.color,
-                        category: getCentsCategory(this.cents),
-                        scale: 0
-                    });
+                // 播放示范音
+                if (!this.demoPlayed && this.x < staff.judgeX + 300) {
+                    this.demoPlayed = true;
+                    playDemoTone(this.noteName, Math.min(400, this.duration * 0.6));
                 }
+
+                // 自动错过
+                if (this.x < staff.judgeX - 100 && !this.hit && !this.missed) {
+                    this.missed = true;
+                    stats.miss++;
+                    combo = 0;
+                    updateDisplay();
+                }
+
+                return this.x > -50;
             }
 
-            draw(ctx) {
-                if (this.landed) return;
+            draw() {
+                const y = this.targetY;
+                const size = staff.lineSpacing * 0.8;
 
-                ctx.save();
-
-                if (this.trail.length > 1) {
-                    for (let i = 1; i < this.trail.length; i++) {
-                        const alpha = i / this.trail.length;
-                        ctx.beginPath();
-                        ctx.moveTo(this.trail[i - 1].x, this.trail[i - 1].y);
-                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
-
-                        const gradient = ctx.createLinearGradient(
-                            this.trail[i - 1].x, this.trail[i - 1].y,
-                            this.trail[i].x, this.trail[i].y
-                        );
-                        gradient.addColorStop(0, this.color + '00');
-                        gradient.addColorStop(1, this.color + Math.floor(alpha * 255).toString(16).padStart(2, '0'));
-                        ctx.strokeStyle = gradient;
-                        ctx.lineWidth = 2 * alpha;
-                        ctx.stroke();
-                    }
-                }
-
-                ctx.translate(this.x, this.y);
-                const angle = Math.atan2(this.targetY - this.y, this.targetX - this.x);
-                ctx.rotate(angle);
-
-                ctx.fillStyle = '#92400e';
-                ctx.fillRect(-25, -2, 25, 4);
-
-                ctx.fillStyle = this.color;
+                // 音符头
+                ctx.fillStyle = this.hit ? '#4ade80' : (this.missed ? '#f87171' : '#60a5fa');
                 ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.lineTo(-6, -4);
-                ctx.lineTo(-6, 4);
-                ctx.closePath();
+                ctx.ellipse(this.x, y, size * 0.8, size * 0.6, 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                ctx.fillStyle = '#F59E0B';
-                for (let i = 0; i < 3; i++) {
-                    ctx.fillRect(-27, -2 + i * 2, 5, 1);
+                // 音符杆
+                ctx.strokeStyle = ctx.fillStyle;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(this.x + size * 0.7, y);
+                ctx.lineTo(this.x + size * 0.7, y - staff.lineSpacing * 3.5);
+                ctx.stroke();
+
+                // 显示音名（关卡1）
+                if (LEVELS[currentLevel].showNoteName) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.font = 'bold 14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(this.noteName, this.x, y - staff.lineSpacing * 4);
+                }
+            }
+        }
+
+        // ==================== 命中点类 ====================
+        class HitPoint {
+            constructor(x, y, isPerfect) {
+                this.x = x;
+                this.y = y;
+                this.isPerfect = isPerfect;
+                this.scale = 0;
+                this.opacity = 1;
+            }
+
+            update() {
+                if (this.scale < 1) this.scale += 0.15;
+                this.opacity -= 0.02;
+                return this.opacity > 0;
+            }
+
+            draw() {
+                const size = 12 * this.scale;
+                const color = this.isPerfect ? '#4ade80' : '#fbbf24';
+
+                // 外圈
+                ctx.strokeStyle = color;
+                ctx.globalAlpha = this.opacity;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 内点
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, size * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // ==================== 偏离指示器类 ====================
+        class MissIndicator {
+            constructor(x, y, isHigh) {
+                this.x = x;
+                this.y = y;
+                this.isHigh = isHigh;
+                this.opacity = 1;
+                this.offset = 0;
+            }
+
+            update() {
+                this.offset += 2;
+                this.opacity -= 0.015;
+                return this.opacity > 0;
+            }
+
+            draw() {
+                const indicatorY = this.isHigh ?
+                    this.y - 30 - this.offset :
+                    this.y + 30 + this.offset;
+
+                ctx.fillStyle = `rgba(248, 113, 113, ${this.opacity})`;
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.isHigh ? '↓ 偏高' : '↑ 偏低', this.x, indicatorY);
+
+                // 箭头
+                ctx.beginPath();
+                ctx.moveTo(this.x - 8, indicatorY + (this.isHigh ? 8 : -8));
+                ctx.lineTo(this.x + 8, indicatorY + (this.isHigh ? 8 : -8));
+                ctx.lineTo(this.x, indicatorY + (this.isHigh ? 18 : -18));
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        // ==================== 音浪环 ====================
+        function drawWaveRings() {
+            for (let i = waveRings.length - 1; i >= 0; i--) {
+                const ring = waveRings[i];
+                ring.radius += 2;
+                ring.opacity -= 0.01;
+
+                if (ring.opacity <= 0 || ring.radius > ring.maxRadius) {
+                    waveRings.splice(i, 1);
+                    continue;
                 }
 
+                ctx.strokeStyle = `rgba(139, 92, 246, ${ring.opacity})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(staff.judgeX, staff.y + staff.lineSpacing * 2, ring.radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        // ==================== 用户发声箭头 ====================
+        let arrows = [];
+        let lastArrowTime = 0;
+        const ARROW_INTERVAL = 100;
+
+        class SingArrow {
+            constructor(targetX, targetY, cents) {
+                this.startX = window.innerWidth / 2;
+                this.startY = window.innerHeight - 150;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.cents = cents;
+                this.progress = 0;
+                this.speed = 0.08;
+            }
+
+            update() {
+                this.progress += this.speed;
+                return this.progress < 1;
+            }
+
+            draw() {
+                const x = this.startX + (this.targetX - this.startX) * this.progress;
+                const y = this.startY + (this.targetY - this.startY) * this.progress;
+
+                // 根据cents决定颜色
+                const absCents = Math.abs(this.cents);
+                let color;
+                if (absCents <= CENTS_THRESHOLD) color = '#4ade80';
+                else if (absCents <= GOOD_CENTS_THRESHOLD) color = '#fbbf24';
+                else color = '#f87171';
+
+                // 绘制箭头
+                ctx.strokeStyle = color;
+                ctx.fillStyle = color;
+                ctx.lineWidth = 3;
+
+                // 箭身
+                ctx.beginPath();
+                ctx.moveTo(this.startX, this.startY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+
+                // 箭头
+                const angle = Math.atan2(this.targetY - this.startY, this.targetX - this.startX);
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(angle);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-15, -8);
+                ctx.lineTo(-15, 8);
+                ctx.closePath();
+                ctx.fill();
                 ctx.restore();
             }
         }
 
-        async function startRecording() {
+        // ==================== 游戏控制 ====================
+        function startGame() {
+            initAudio();
+
+            const levelConfig = LEVELS[currentLevel];
+            const melodyIndex = Math.floor(Math.random() * levelConfig.melodies.length);
+            currentMelody = levelConfig.melodies[melodyIndex];
+
+            gameNotes = [];
+            hitPoints = [];
+            missIndicators = [];
+            arrows = [];
+            waveRings = [];
+            melodyIndex = 0;
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            stats = { perfect: 0, good: 0, miss: 0 };
+
+            gameRunning = true;
+            updateDisplay();
+
+            document.getElementById('hintDisplay').textContent = `关卡${currentLevel}: ${levelConfig.name}`;
+
+            // 生成音符
+            let delay = 0;
+            currentMelody.forEach((noteData, index) => {
+                setTimeout(() => {
+                    if (gameRunning) {
+                        gameNotes.push(new GameNote(noteData.note, noteData.duration, levelConfig.speed));
+                    }
+                }, delay);
+                delay += noteData.duration + 500;
+            });
+
+            // 游戏结束检测
+            setTimeout(() => {
+                if (gameRunning) {
+                    endGame();
+                }
+            }, delay + 3000);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            stopSinging();
+
+            const overlay = document.getElementById('resultOverlay');
+            const emoji = document.getElementById('resultEmoji');
+            const title = document.getElementById('resultTitle');
+            const subtitle = document.getElementById('resultSubtitle');
+
+            const totalNotes = stats.perfect + stats.good + stats.miss;
+            const accuracy = totalNotes > 0 ? Math.round((stats.perfect + stats.good) / totalNotes * 100) : 0;
+
+            if (accuracy >= 90) {
+                emoji.textContent = '🏆';
+                title.textContent = '完美！';
+                subtitle.textContent = `得分: ${score} | 最高连击: ${maxCombo}`;
+            } else if (accuracy >= 70) {
+                emoji.textContent = '🎯';
+                title.textContent = '很棒！';
+                subtitle.textContent = `得分: ${score} | 最高连击: ${maxCombo}`;
+            } else if (accuracy >= 50) {
+                emoji.textContent = '😊';
+                title.textContent = '继续加油！';
+                subtitle.textContent = `得分: ${score} | 最高连击: ${maxCombo}`;
+            } else {
+                emoji.textContent = '💪';
+                title.textContent = '多练习哦！';
+                subtitle.textContent = `得分: ${score} | 准确率: ${accuracy}%`;
+            }
+
+            document.getElementById('statPerfect').textContent = stats.perfect;
+            document.getElementById('statGood').textContent = stats.good;
+            document.getElementById('statMiss').textContent = stats.miss;
+
+            overlay.classList.add('show');
+        }
+
+        function updateDisplay() {
+            document.getElementById('scoreDisplay').textContent = `得分: ${score}`;
+            document.getElementById('comboDisplay').textContent = combo > 1 ? `连击 x${combo}` : '';
+        }
+
+        // ==================== 发声检测 ====================
+        async function startSinging() {
+            if (!gameRunning) return;
+
             try {
+                initAudio();
+
                 mediaStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         echoCancellation: false,
@@ -454,310 +932,187 @@
                 analyser.fftSize = 2048;
                 source.connect(analyser);
 
-                isRecording = true;
+                isSinging = true;
                 pitchHistory = [];
-                lastArrowTime = Date.now();
+
+                document.getElementById('singBtn').classList.add('singing');
+                document.getElementById('singBtn').querySelector('.text').textContent = '发声中...';
 
                 detectPitchLoop();
 
             } catch (error) {
                 console.error('Microphone error:', error);
-                alert('无法访问麦克风，请检查权限设置');
+                alert('无法访问麦克风');
             }
         }
 
-        function stopRecording() {
-            isRecording = false;
+        function stopSinging() {
+            isSinging = false;
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
             }
-            showResult();
+
+            document.getElementById('singBtn').classList.remove('singing');
+            document.getElementById('singBtn').querySelector('.text').textContent = '按住发声';
+            document.getElementById('pitchValue').textContent = '--';
         }
 
         function detectPitchLoop() {
-            if (!isRecording) return;
+            if (!isSinging || !analyser) return;
 
             const bufferLength = analyser.fftSize;
             const buffer = new Float32Array(bufferLength);
             analyser.getFloatTimeDomainData(buffer);
 
             const pitch = detectPitch(buffer);
-            if (pitch && currentTargetFrequency) {
+
+            if (pitch) {
                 const smoothedPitch = smoothPitch(pitch);
-                const centsDiff = calculateCentsDiff(smoothedPitch, currentTargetFrequency);
+                const noteName = frequencyToNoteName(smoothedPitch);
 
-                const now = Date.now();
-                if (now - lastArrowTime >= ARROW_INTERVAL) {
-                    const startX = window.innerWidth / 2;
-                    const startY = window.innerHeight - 150;
-                    const targetY = target.y + (centsDiff * 3.5);
-                    const angle = (Math.random() - 0.5) * 0.4;
+                document.getElementById('pitchValue').textContent = noteName || '--';
 
-                    const arrow = new Arrow(
-                        startX + Math.cos(angle) * 30,
-                        startY + Math.sin(angle) * 30,
-                        target.x + (Math.random() - 0.5) * target.radius * 0.5,
-                        targetY,
-                        centsDiff
-                    );
-                    arrows.push(arrow);
-                    lastArrowTime = now;
+                // 检查是否命中判定线上的音符
+                const activeNote = gameNotes.find(n =>
+                    !n.hit && !n.missed &&
+                    Math.abs(n.x - staff.judgeX) < 80
+                );
+
+                if (activeNote) {
+                    const centsDiff = calculateCentsDiff(smoothedPitch, activeNote.frequency);
+                    const absCents = Math.abs(centsDiff);
+
+                    // 生成箭头视觉效果
+                    const now = Date.now();
+                    if (now - lastArrowTime > ARROW_INTERVAL) {
+                        arrows.push(new SingArrow(
+                            staff.judgeX,
+                            activeNote.targetY,
+                            centsDiff
+                        ));
+                        lastArrowTime = now;
+
+                        // 音浪效果
+                        waveRings.push({
+                            radius: staff.lineSpacing * 2,
+                            maxRadius: staff.lineSpacing * 6,
+                            opacity: 0.4,
+                            phase: 0
+                        });
+                    }
+
+                    // 判定命中
+                    if (absCents <= CENTS_THRESHOLD) {
+                        activeNote.hit = true;
+                        stats.perfect++;
+                        score += 100 + combo * 10;
+                        combo++;
+                        maxCombo = Math.max(maxCombo, combo);
+                        hitPoints.push(new HitPoint(staff.judgeX, activeNote.targetY, true));
+                    } else if (absCents <= GOOD_CENTS_THRESHOLD) {
+                        activeNote.hit = true;
+                        stats.good++;
+                        score += 50 + combo * 5;
+                        combo++;
+                        maxCombo = Math.max(maxCombo, combo);
+                        hitPoints.push(new HitPoint(staff.judgeX, activeNote.targetY, false));
+                    }
                 }
 
-                const rms = Math.sqrt(buffer.reduce((sum, val) => sum + val * val, 0) / buffer.length);
-                if (rms > 0.02) {
-                    const amplitude = Math.min(rms * 15, target.radius * 0.6);
-                    target.waveRings.push({
-                        radius: target.radius,
-                        amplitude: amplitude,
-                        opacity: 0.5,
-                        phase: 0
-                    });
-                }
+                updateDisplay();
             }
 
             requestAnimationFrame(detectPitchLoop);
         }
 
-        function showResult() {
-            if (landedPoints.length === 0) {
-                document.getElementById('resultIcon').textContent = '😶';
-                document.getElementById('resultTitle').textContent = '未检测到声音';
-                document.getElementById('resultTitle').className = 'text-3xl font-bold text-center mb-2 text-white/60';
-                document.getElementById('resultDetail').textContent = '请确保已播放目标音并发出声音';
-            } else {
-                const avgCents = landedPoints.reduce((sum, p) => sum + p.cents, 0) / landedPoints.length;
-                const perfect = landedPoints.filter(p => p.category === 'perfect').length;
-                const close = landedPoints.filter(p => p.category === 'close').length;
-                const off = landedPoints.filter(p => p.category === 'off').length;
-
-                if (Math.abs(avgCents) <= 12) {
-                    document.getElementById('resultIcon').textContent = '🎯';
-                    document.getElementById('resultTitle').textContent = '完美命中！';
-                    document.getElementById('resultTitle').className = 'text-3xl font-bold text-center mb-2 text-emerald-400';
-                } else if (Math.abs(avgCents) <= 35) {
-                    document.getElementById('resultIcon').textContent = avgCents > 0 ? '⬆️' : '⬇️';
-                    document.getElementById('resultTitle').textContent = avgCents > 0 ? '稍微偏高' : '稍微偏低';
-                    document.getElementById('resultTitle').className = 'text-3xl font-bold text-center mb-2 text-amber-400';
-                } else {
-                    document.getElementById('resultIcon').textContent = avgCents > 0 ? '⬆️⬆️' : '⬇️⬇️';
-                    document.getElementById('resultTitle').textContent = avgCents > 0 ? '偏高很多' : '偏低很多';
-                    document.getElementById('resultTitle').className = 'text-3xl font-bold text-center mb-2 text-red-400';
-                }
-
-                document.getElementById('resultDetail').textContent = `平均偏差 ${Math.abs(avgCents).toFixed(1)}¢ | 发射 ${landedPoints.length} 支箭`;
-                document.getElementById('statPerfect').textContent = perfect;
-                document.getElementById('statClose').textContent = close;
-                document.getElementById('statOff').textContent = off;
-            }
-
-            document.getElementById('resultOverlay').classList.remove('hidden');
-        }
-
-        function drawTarget() {
-            const pulse = isDemoPlaying ? Math.sin(Date.now() / 100) * 6 : 0;
-            const baseRadius = target.radius + pulse;
-
-            ctx.save();
-            ctx.translate(target.x, target.y);
-
-            for (let i = 5; i > 0; i--) {
-                const r = baseRadius * (i / 5);
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-
-                if (i === 1) {
-                    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.8)');
-                    gradient.addColorStop(0.6, 'rgba(239, 68, 68, 0.4)');
-                    gradient.addColorStop(1, 'rgba(239, 68, 68, 0.1)');
-                } else {
-                    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.15)');
-                    gradient.addColorStop(0.7, 'rgba(139, 92, 246, 0.1)');
-                    gradient.addColorStop(1, 'rgba(139, 92, 246, 0.05)');
-                }
-
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(0, 0, r, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.strokeStyle = i === 1 ? '#EF4444' : 'rgba(99, 102, 241, 0.4)';
-                ctx.lineWidth = i === 1 ? 2.5 : 1.5;
-                ctx.stroke();
-            }
-
-            ctx.fillStyle = '#EF4444';
-            ctx.beginPath();
-            ctx.arc(0, 0, 12, 0, Math.PI * 2);
-            ctx.fill();
-
-            if (isDemoPlaying) {
-                ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.arc(0, 0, 20, 0, Math.PI * 2);
-                ctx.stroke();
-            }
-
-            ctx.restore();
-
-            for (const point of landedPoints) {
-                if (point.scale < 1) {
-                    point.scale += 0.1;
-                    if (point.scale > 1) point.scale = 1;
-                }
-
-                const size = 8 * point.scale;
-                const gradient = ctx.createRadialGradient(
-                    point.x, point.y, 0,
-                    point.x, point.y, size
-                );
-                gradient.addColorStop(0, point.color);
-                gradient.addColorStop(0.5, point.color + '80');
-                gradient.addColorStop(1, point.color + '20');
-
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.fillStyle = '#FFF';
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, 4 * point.scale, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        function drawWaveRings() {
-            for (let i = target.waveRings.length - 1; i >= 0; i--) {
-                const ring = target.waveRings[i];
-                ring.phase += 0.03;
-                ring.opacity -= 0.008;
-
-                if (ring.opacity <= 0) {
-                    target.waveRings.splice(i, 1);
-                    continue;
-                }
-
-                const currentRadius = ring.radius + ring.amplitude * Math.sin(ring.phase);
-                const gradient = ctx.createRadialGradient(
-                    target.x, target.y, currentRadius - 10,
-                    target.x, target.y, currentRadius + 10
-                );
-                gradient.addColorStop(0, `rgba(99, 102, 241, 0)`);
-                gradient.addColorStop(0.5, `rgba(139, 92, 246, ${ring.opacity * 0.6})`);
-                gradient.addColorStop(1, `rgba(99, 102, 241, 0)`);
-
-                ctx.strokeStyle = gradient;
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.arc(target.x, target.y, currentRadius, 0, Math.PI * 2);
-                ctx.stroke();
-            }
-        }
-
+        // ==================== 游戏主循环 ====================
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            drawWaveRings();
-            drawTarget();
+            // 绘制五线谱
+            drawStaff();
 
+            // 音浪环
+            drawWaveRings();
+
+            // 更新和绘制音符
+            for (let i = gameNotes.length - 1; i >= 0; i--) {
+                if (!gameNotes[i].update()) {
+                    gameNotes.splice(i, 1);
+                } else {
+                    gameNotes[i].draw();
+                }
+            }
+
+            // 更新和绘制命中点
+            for (let i = hitPoints.length - 1; i >= 0; i--) {
+                if (!hitPoints[i].update()) {
+                    hitPoints.splice(i, 1);
+                } else {
+                    hitPoints[i].draw();
+                }
+            }
+
+            // 更新和绘制偏离指示器
+            for (let i = missIndicators.length - 1; i >= 0; i--) {
+                if (!missIndicators[i].update()) {
+                    missIndicators.splice(i, 1);
+                } else {
+                    missIndicators[i].draw();
+                }
+            }
+
+            // 更新和绘制箭头
             for (let i = arrows.length - 1; i >= 0; i--) {
-                arrows[i].update();
-                arrows[i].draw(ctx);
-                if (arrows[i].landed) {
+                if (!arrows[i].update()) {
                     arrows.splice(i, 1);
+                } else {
+                    arrows[i].draw();
                 }
             }
 
             requestAnimationFrame(gameLoop);
         }
 
-        const recordBtn = document.getElementById('recordBtn');
-        const recordStatus = document.getElementById('recordStatus');
+        // ==================== 事件绑定 ====================
+        document.getElementById('startBtn').addEventListener('click', startGame);
 
-        recordBtn.addEventListener('mousedown', startRecording);
-        recordBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            startRecording();
+        const singBtn = document.getElementById('singBtn');
+        singBtn.addEventListener('mousedown', startSinging);
+        singBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startSinging(); });
+
+        const stopHandler = () => { if (isSinging) stopSinging(); };
+        document.addEventListener('mouseup', stopHandler);
+        document.addEventListener('touchend', stopHandler);
+        document.addEventListener('mouseleave', stopHandler);
+
+        document.querySelectorAll('.btn-level').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.btn-level').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLevel = parseInt(btn.dataset.level);
+            });
         });
 
-        const stopRecordingHandler = () => {
-            if (isRecording) {
-                stopRecording();
-            }
-        };
-
-        recordBtn.addEventListener('mouseup', stopRecordingHandler);
-        recordBtn.addEventListener('touchend', stopRecordingHandler);
-        recordBtn.addEventListener('mouseleave', stopRecordingHandler);
-
-        const updateRecordButton = () => {
-            if (isRecording) {
-                recordBtn.classList.add('recording');
-                recordStatus.textContent = '录音中... 松开结束';
-            } else {
-                recordBtn.classList.remove('recording');
-                recordStatus.textContent = '按住发声';
-            }
-        };
-
-        recordBtn.addEventListener('mousedown', () => {
-            if (!currentTargetFrequency) {
-                alert('请先播放目标音！');
-                return;
-            }
-            updateRecordButton();
-        });
-
-        recordBtn.addEventListener('touchstart', () => {
-            if (!currentTargetFrequency) {
-                alert('请先播放目标音！');
-                return;
-            }
-            updateRecordButton();
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isRecording) updateRecordButton();
-        });
-
-        document.addEventListener('touchend', () => {
-            if (isRecording) updateRecordButton();
-        });
-
-        document.getElementById('playTargetBtn').addEventListener('click', playDemoTone);
-
-        document.querySelectorAll('.glass-btn[data-sound]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                document.querySelectorAll('.glass-btn[data-sound]').forEach(b => {
-                    b.classList.remove('active');
-                });
+        document.querySelectorAll('.btn-sound').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.btn-sound').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 selectedSoundType = btn.dataset.sound;
             });
         });
 
-        document.getElementById('closeResult').addEventListener('click', () => {
-            document.getElementById('resultOverlay').classList.add('hidden');
-            landedPoints.length = 0;
-            arrows.length = 0;
-            currentTargetFrequency = null;
-            target.waveRings = [];
-            document.getElementById('targetNoteDisplay').textContent = '点击播放目标音开始训练';
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            document.getElementById('resultOverlay').classList.remove('show');
+            startGame();
         });
 
-        resizeCanvas();
+        // 启动游戏循环
         gameLoop();
 
-        if (!audioContext) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-
-        document.addEventListener('click', async () => {
-            if (audioContext.state === 'suspended') {
-                await audioContext.resume();
-            }
+        // 初始化音频
+        document.addEventListener('click', () => {
+            initAudio();
         }, { once: true });
     </script>
 </body>
