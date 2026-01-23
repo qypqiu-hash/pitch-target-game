@@ -409,54 +409,233 @@
         // ==================== 谱面数据结构 ====================
         // 所有音符来自此结构化数据
         // startTime 是相对于音乐开始的时间（秒）
+
         const LEVELS = {
             1: {
-                name: '单音训练',
+                name: 'Level 1 - 熟悉旋律',
+                difficulty: 'easy',
                 speed: 150, // 像素/秒
                 showNoteName: true,
-                // 谱面数据：pitch=音高，startTime=相对于音乐开始的秒，duration=时长(秒)
+                pitchRange: 'C4-G4 (纯五度)',
                 melodies: [
+                    // 1. 小星星片段 (C-C-G-G-A-A-G)
                     [
-                        { pitch: 'C4', startTime: 1.5, duration: 2.0 }
+                        { pitch: 'C4', startTime: 1.5, duration: 0.8 },
+                        { pitch: 'C4', startTime: 2.5, duration: 0.8 },
+                        { pitch: 'G4', startTime: 3.5, duration: 0.8 },
+                        { pitch: 'G4', startTime: 4.5, duration: 0.8 },
+                        { pitch: 'A4', startTime: 5.5, duration: 0.8 },
+                        { pitch: 'A4', startTime: 6.5, duration: 0.8 },
+                        { pitch: 'G4', startTime: 7.5, duration: 1.6 }
                     ],
+                    // 2. 小星星前两音
                     [
-                        { pitch: 'E4', startTime: 1.5, duration: 2.0 }
+                        { pitch: 'C4', startTime: 1.5, duration: 0.8 },
+                        { pitch: 'C4', startTime: 2.5, duration: 0.8 },
+                        { pitch: 'G4', startTime: 3.5, duration: 1.6 }
                     ],
+                    // 3. 生日快乐开头
                     [
-                        { pitch: 'G4', startTime: 1.5, duration: 2.0 }
+                        { pitch: 'C4', startTime: 1.5, duration: 0.5 },
+                        { pitch: 'C4', startTime: 2.1, duration: 0.5 },
+                        { pitch: 'D4', startTime: 2.7, duration: 1.0 },
+                        { pitch: 'C4', startTime: 3.9, duration: 1.0 },
+                        { pitch: 'F4', startTime: 5.1, duration: 1.0 },
+                        { pitch: 'E4', startTime: 6.3, duration: 2.0 }
                     ],
+                    // 4. 生日快乐续
                     [
-                        { pitch: 'A4', startTime: 1.5, duration: 2.0 }
+                        { pitch: 'C4', startTime: 1.5, duration: 0.5 },
+                        { pitch: 'C4', startTime: 2.1, duration: 0.5 },
+                        { pitch: 'D4', startTime: 2.7, duration: 1.0 },
+                        { pitch: 'C4', startTime: 3.9, duration: 1.0 },
+                        { pitch: 'G4', startTime: 5.1, duration: 1.0 },
+                        { pitch: 'F4', startTime: 6.3, duration: 2.0 }
+                    ],
+                    // 5. 两只老虎片段
+                    [
+                        { pitch: 'C4', startTime: 1.5, duration: 0.6 },
+                        { pitch: 'D4', startTime: 2.3, duration: 0.6 },
+                        { pitch: 'E4', startTime: 3.1, duration: 0.6 },
+                        { pitch: 'C4', startTime: 3.9, duration: 0.6 },
+                        { pitch: 'C4', startTime: 4.7, duration: 0.6 },
+                        { pitch: 'D4', startTime: 5.5, duration: 0.6 },
+                        { pitch: 'E4', startTime: 6.3, duration: 0.6 },
+                        { pitch: 'C4', startTime: 7.1, duration: 1.2 }
+                    ],
+                    // 6. 两只老虎变奏
+                    [
+                        { pitch: 'D4', startTime: 1.5, duration: 0.6 },
+                        { pitch: 'E4', startTime: 2.3, duration: 0.6 },
+                        { pitch: 'F4', startTime: 3.1, duration: 0.6 },
+                        { pitch: 'D4', startTime: 3.9, duration: 0.6 },
+                        { pitch: 'D4', startTime: 4.7, duration: 0.6 },
+                        { pitch: 'E4', startTime: 5.5, duration: 0.6 },
+                        { pitch: 'F4', startTime: 6.3, duration: 0.6 },
+                        { pitch: 'D4', startTime: 7.1, duration: 1.2 }
+                    ],
+                    // 7. 小蜜蜂片段
+                    [
+                        { pitch: 'C4', startTime: 1.5, duration: 0.5 },
+                        { pitch: 'D4', startTime: 2.2, duration: 0.5 },
+                        { pitch: 'E4', startTime: 2.9, duration: 0.5 },
+                        { pitch: 'F4', startTime: 3.6, duration: 0.5 },
+                        { pitch: 'G4', startTime: 4.3, duration: 0.5 },
+                        { pitch: 'G4', startTime: 5.0, duration: 0.5 },
+                        { pitch: 'G4', startTime: 5.7, duration: 1.2 }
+                    ],
+                    // 8. 小蜜蜂简化
+                    [
+                        { pitch: 'E4', startTime: 1.5, duration: 0.5 },
+                        { pitch: 'F4', startTime: 2.2, duration: 0.5 },
+                        { pitch: 'G4', startTime: 2.9, duration: 0.5 },
+                        { pitch: 'E4', startTime: 3.6, duration: 1.5 }
                     ]
                 ]
             },
             2: {
-                name: '相邻音阶',
-                speed: 150,
+                name: 'Level 2 - 有趣模仿',
+                difficulty: 'medium',
+                speed: 160,
                 showNoteName: false,
+                pitchRange: 'G3-C5 (八度)',
                 melodies: [
+                    // 1. 鸟叫声 (高-低-高 快速振荡)
                     [
-                        { pitch: 'C4', startTime: 1.5, duration: 1.0 },
-                        { pitch: 'D4', startTime: 3.0, duration: 1.0 },
-                        { pitch: 'E4', startTime: 4.5, duration: 1.0 }
+                        { pitch: 'C5', startTime: 1.5, duration: 0.15 },
+                        { pitch: 'G4', startTime: 1.75, duration: 0.15 },
+                        { pitch: 'C5', startTime: 1.9, duration: 0.15 },
+                        { pitch: 'G4', startTime: 2.15, duration: 0.15 },
+                        { pitch: 'C5', startTime: 2.3, duration: 0.3 }
                     ],
+                    // 2. 猫叫声 (高-低-高)
                     [
-                        { pitch: 'E4', startTime: 1.5, duration: 1.0 },
-                        { pitch: 'F4', startTime: 3.0, duration: 1.0 },
-                        { pitch: 'G4', startTime: 4.5, duration: 1.0 }
+                        { pitch: 'G4', startTime: 1.5, duration: 0.3 },
+                        { pitch: 'E4', startTime: 1.95, duration: 0.8 },
+                        { pitch: 'G4', startTime: 2.9, duration: 0.5 }
+                    ],
+                    // 3. 猫叫声变奏
+                    [
+                        { pitch: 'A4', startTime: 1.5, duration: 0.3 },
+                        { pitch: 'F4', startTime: 1.95, duration: 0.8 },
+                        { pitch: 'A4', startTime: 2.9, duration: 0.5 }
+                    ],
+                    // 4. 牛叫声 (长低音)
+                    [
+                        { pitch: 'G3', startTime: 1.5, duration: 1.2 },
+                        { pitch: 'G3', startTime: 2.9, duration: 0.4 },
+                        { pitch: 'A3', startTime: 3.5, duration: 0.4 }
+                    ],
+                    // 5. 羊叫声 (短促高音)
+                    [
+                        { pitch: 'B4', startTime: 1.5, duration: 0.2 },
+                        { pitch: 'B4', startTime: 1.8, duration: 0.2 },
+                        { pitch: 'B4', startTime: 2.1, duration: 0.2 },
+                        { pitch: 'A4', startTime: 2.5, duration: 0.3 }
+                    ],
+                    // 6. 狗叫声 (低-高)
+                    [
+                        { pitch: 'G3', startTime: 1.5, duration: 0.3 },
+                        { pitch: 'G3', startTime: 1.95, duration: 0.3 },
+                        { pitch: 'C4', startTime: 2.4, duration: 0.6 },
+                        { pitch: 'C4', startTime: 3.15, duration: 0.4 }
+                    ],
+                    // 7. 铃铛声 (清脆)
+                    [
+                        { pitch: 'A4', startTime: 1.5, duration: 0.4 },
+                        { pitch: 'B4', startTime: 2.1, duration: 0.4 },
+                        { pitch: 'C5', startTime: 2.7, duration: 0.8 }
+                    ],
+                    // 8. 喵叫(2) (高-低-高-低)
+                    [
+                        { pitch: 'G4', startTime: 1.5, duration: 0.25 },
+                        { pitch: 'E4', startTime: 1.9, duration: 0.4 },
+                        { pitch: 'G4', startTime: 2.45, duration: 0.25 },
+                        { pitch: 'D4', startTime: 2.85, duration: 0.6 }
                     ]
                 ]
             },
             3: {
-                name: '短旋律',
-                speed: 150,
+                name: 'Level 3 - 音准训练',
+                difficulty: 'medium-hard',
+                speed: 180,
                 showNoteName: false,
+                pitchRange: 'C4-A5 (十度)',
                 melodies: [
+                    // 1. C大调音阶上行
                     [
-                        { pitch: 'E4', startTime: 1.5, duration: 0.7 },
-                        { pitch: 'D4', startTime: 2.7, duration: 0.7 },
-                        { pitch: 'E4', startTime: 3.9, duration: 0.7 },
-                        { pitch: 'G4', startTime: 5.1, duration: 0.9 }
+                        { pitch: 'C4', startTime: 1.5, duration: 0.5 },
+                        { pitch: 'D4', startTime: 2.1, duration: 0.5 },
+                        { pitch: 'E4', startTime: 2.7, duration: 0.5 },
+                        { pitch: 'F4', startTime: 3.3, duration: 0.5 },
+                        { pitch: 'G4', startTime: 3.9, duration: 0.5 },
+                        { pitch: 'A4', startTime: 4.5, duration: 0.5 },
+                        { pitch: 'B4', startTime: 5.1, duration: 0.5 },
+                        { pitch: 'C5', startTime: 5.7, duration: 1.0 }
+                    ],
+                    // 2. C大调音阶下行
+                    [
+                        { pitch: 'C5', startTime: 1.5, duration: 0.5 },
+                        { pitch: 'B4', startTime: 2.1, duration: 0.5 },
+                        { pitch: 'A4', startTime: 2.7, duration: 0.5 },
+                        { pitch: 'G4', startTime: 3.3, duration: 0.5 },
+                        { pitch: 'F4', startTime: 3.9, duration: 0.5 },
+                        { pitch: 'E4', startTime: 4.5, duration: 0.5 },
+                        { pitch: 'D4', startTime: 5.1, duration: 0.5 },
+                        { pitch: 'C4', startTime: 5.7, duration: 1.0 }
+                    ],
+                    // 3. 三度音程练习
+                    [
+                        { pitch: 'C4', startTime: 1.5, duration: 0.6 },
+                        { pitch: 'E4', startTime: 2.3, duration: 0.6 },
+                        { pitch: 'D4', startTime: 3.1, duration: 0.6 },
+                        { pitch: 'F4', startTime: 3.9, duration: 0.6 },
+                        { pitch: 'E4', startTime: 4.7, duration: 0.6 },
+                        { pitch: 'G4', startTime: 5.5, duration: 0.6 },
+                        { pitch: 'F4', startTime: 6.3, duration: 1.2 }
+                    ],
+                    // 4. 五度跳跃
+                    [
+                        { pitch: 'C4', startTime: 1.5, duration: 0.8 },
+                        { pitch: 'G4', startTime: 2.5, duration: 0.8 },
+                        { pitch: 'D4', startTime: 3.5, duration: 0.8 },
+                        { pitch: 'A4', startTime: 4.5, duration: 0.8 },
+                        { pitch: 'E4', startTime: 5.5, duration: 1.2 }
+                    ],
+                    // 5. 级进+跳跃组合
+                    [
+                        { pitch: 'C4', startTime: 1.5, duration: 0.5 },
+                        { pitch: 'D4', startTime: 2.1, duration: 0.5 },
+                        { pitch: 'E4', startTime: 2.7, duration: 0.5 },
+                        { pitch: 'G4', startTime: 3.3, duration: 0.8 },
+                        { pitch: 'F4', startTime: 4.3, duration: 0.5 },
+                        { pitch: 'E4', startTime: 4.9, duration: 0.5 },
+                        { pitch: 'D4', startTime: 5.5, duration: 0.5 },
+                        { pitch: 'C4', startTime: 6.1, duration: 1.0 }
+                    ],
+                    // 6. 八度音程
+                    [
+                        { pitch: 'C4', startTime: 1.5, duration: 0.8 },
+                        { pitch: 'C5', startTime: 2.5, duration: 0.8 },
+                        { pitch: 'D4', startTime: 3.5, duration: 0.8 },
+                        { pitch: 'D5', startTime: 4.5, duration: 0.8 },
+                        { pitch: 'C4', startTime: 5.5, duration: 1.2 }
+                    ],
+                    // 7. 回音音型
+                    [
+                        { pitch: 'E4', startTime: 1.5, duration: 0.4 },
+                        { pitch: 'F4', startTime: 2.0, duration: 0.4 },
+                        { pitch: 'E4', startTime: 2.5, duration: 0.4 },
+                        { pitch: 'D4', startTime: 3.0, duration: 0.4 },
+                        { pitch: 'C4', startTime: 3.5, duration: 1.2 }
+                    ],
+                    // 8. 波动音型
+                    [
+                        { pitch: 'E4', startTime: 1.5, duration: 0.5 },
+                        { pitch: 'G4', startTime: 2.1, duration: 0.5 },
+                        { pitch: 'E4', startTime: 2.7, duration: 0.5 },
+                        { pitch: 'G4', startTime: 3.3, duration: 0.5 },
+                        { pitch: 'A4', startTime: 3.9, duration: 1.0 }
                     ]
                 ]
             }
