@@ -246,6 +246,15 @@
             text-align: center;
             margin-top: 4px;
         }
+        .debug-info {
+            position: fixed;
+            bottom: 140px;
+            left: 20px;
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            z-index: 100;
+            max-width: 200px;
+        }
     </style>
 </head>
 <body>
@@ -272,6 +281,10 @@
     <div class="pitch-indicator">
         <div class="value" id="pitchValue">--</div>
         <div class="label">当前音高</div>
+    </div>
+
+    <div class="debug-info" id="debugInfo">
+        等待开始...
     </div>
 
     <div class="bottom-area">
@@ -305,7 +318,7 @@
     </div>
 
     <script>
-        // ==================== 音符频率表 ====================
+        // ==================== 音符频率表（完整C大调） ====================
         const NOTE_FREQUENCIES = {
             'C3': 130.81, 'D3': 146.83, 'E3': 164.81, 'F3': 174.61, 'G3': 196.00, 'A3': 220.00, 'B3': 246.94,
             'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88,
@@ -316,62 +329,42 @@
         const LEVELS = {
             1: {
                 name: '单音训练',
-                speed: 1.5,
+                speed: 2,
                 showNoteName: true,
                 melodies: [
-                    [{ note: 'C4', duration: 2000 }],
-                    [{ note: 'E4', duration: 2000 }],
-                    [{ note: 'G4', duration: 2000 }],
-                    [{ note: 'A4', duration: 2000 }]
+                    [{ note: 'C4', duration: 2500 }],
+                    [{ note: 'E4', duration: 2500 }],
+                    [{ note: 'G4', duration: 2500 }],
+                    [{ note: 'A4', duration: 2500 }]
                 ]
             },
             2: {
                 name: '相邻音阶',
-                speed: 2.5,
+                speed: 3,
                 showNoteName: false,
                 melodies: [
                     [
-                        { note: 'C4', duration: 800 },
-                        { note: 'D4', duration: 800 },
-                        { note: 'E4', duration: 800 }
+                        { note: 'C4', duration: 1000 },
+                        { note: 'D4', duration: 1000 },
+                        { note: 'E4', duration: 1000 }
                     ],
                     [
-                        { note: 'E4', duration: 800 },
-                        { note: 'F4', duration: 800 },
-                        { note: 'G4', duration: 800 }
-                    ],
-                    [
-                        { note: 'G4', duration: 800 },
-                        { note: 'A4', duration: 800 },
-                        { note: 'G4', duration: 800 }
+                        { note: 'E4', duration: 1000 },
+                        { note: 'F4', duration: 1000 },
+                        { note: 'G4', duration: 1000 }
                     ]
                 ]
             },
             3: {
                 name: '短旋律',
-                speed: 3.5,
+                speed: 4,
                 showNoteName: false,
                 melodies: [
                     [
-                        { note: 'E4', duration: 600 },
-                        { note: 'D4', duration: 600 },
-                        { note: 'E4', duration: 600 },
-                        { note: 'G4', duration: 800 }
-                    ],
-                    [
-                        { note: 'C4', duration: 500 },
-                        { note: 'E4', duration: 500 },
-                        { note: 'G4', duration: 500 },
-                        { note: 'C5', duration: 600 },
-                        { note: 'G4', duration: 500 }
-                    ],
-                    [
-                        { note: 'G4', duration: 500 },
-                        { note: 'E4', duration: 500 },
-                        { note: 'C4', duration: 500 },
-                        { note: 'E4', duration: 500 },
-                        { note: 'D4', duration: 800 },
-                        { note: 'C4', duration: 600 }
+                        { note: 'E4', duration: 700 },
+                        { note: 'D4', duration: 700 },
+                        { note: 'E4', duration: 700 },
+                        { note: 'G4', duration: 900 }
                     ]
                 ]
             }
@@ -385,6 +378,7 @@
         let currentLevel = 1;
         let gameRunning = false;
         let isSinging = false;
+        let audioInitialized = false;
 
         let score = 0;
         let combo = 0;
@@ -392,16 +386,24 @@
         let stats = { perfect: 0, good: 0, miss: 0 };
 
         let currentMelody = [];
-        let melodyIndex = 0;
-        let gameNotes = [];      // 滚动的音符
-        let hitPoints = [];      // 命中点
-        let missIndicators = []; // 偏离指示器
-        let waveRings = [];      // 音浪环
+        let gameNotes = [];
+        let hitPoints = [];
+        let waveRings = [];
+        let arrows = [];
 
         let pitchHistory = [];
         const PITCH_SMOOTHING = 3;
-        const CENTS_THRESHOLD = 30;  // 命中判定：±30 cents
-        const GOOD_CENTS_THRESHOLD = 50; // 接近判定
+        const CENTS_THRESHOLD = 30;
+        const GOOD_CENTS_THRESHOLD = 50;
+
+        // ==================== 调试输出 ====================
+        function debug(msg) {
+            const el = document.getElementById('debugInfo');
+            if (el) {
+                el.textContent = msg;
+            }
+            console.log('[DEBUG]', msg);
+        }
 
         // ==================== Canvas 设置 ====================
         const canvas = document.getElementById('gameCanvas');
@@ -422,51 +424,85 @@
 
             staff.y = window.innerHeight * 0.38;
             staff.lineSpacing = Math.min(25, window.innerHeight * 0.035);
-            staff.judgeX = window.innerWidth * 0.3;
+            staff.judgeX = window.innerWidth * 0.35;
         }
 
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
         // ==================== 音频系统 ====================
-        function initAudio() {
-            if (!audioContext) {
+        async function initAudio() {
+            if (audioInitialized) return true;
+
+            try {
+                debug('初始化音频...');
+
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
+                debug('AudioContext 创建: ' + audioContext.state);
+
+                if (audioContext.state === 'suspended') {
+                    debug('等待 resume...');
+                    await audioContext.resume();
+                    debug('AudioContext resumed: ' + audioContext.state);
+                }
+
+                audioInitialized = true;
+                debug('音频初始化完成');
+                return true;
+            } catch (error) {
+                debug('音频初始化失败: ' + error.message);
+                console.error(error);
+                return false;
             }
         }
 
         function playDemoTone(noteName, duration = 500) {
             return new Promise((resolve) => {
-                initAudio();
+                if (!audioContext || !audioInitialized) {
+                    debug('音频未初始化，无法播放');
+                    resolve();
+                    return;
+                }
 
                 const freq = NOTE_FREQUENCIES[noteName];
-                if (!freq) { resolve(); return; }
+                if (!freq) {
+                    debug('未知音符: ' + noteName);
+                    resolve();
+                    return;
+                }
 
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
+                debug(`播放示范音: ${noteName} (${freq.toFixed(1)}Hz)`);
 
-                osc.type = selectedSoundType === 'triangle' ? 'triangle' : 'sine';
-                osc.frequency.value = freq;
+                try {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
 
-                osc.connect(gain);
-                gain.connect(audioContext.destination);
+                    osc.type = selectedSoundType === 'triangle' ? 'triangle' : 'sine';
+                    osc.frequency.value = freq;
 
-                const now = audioContext.currentTime;
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
-                gain.gain.linearRampToValueAtTime(0.25, now + duration / 1000 - 0.1);
-                gain.gain.linearRampToValueAtTime(0, now + duration / 1000);
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
 
-                osc.start(now);
-                osc.stop(now + duration / 1000);
+                    const now = audioContext.currentTime;
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
+                    gain.gain.linearRampToValueAtTime(0.25, now + duration / 1000 - 0.1);
+                    gain.gain.linearRampToValueAtTime(0, now + duration / 1000);
 
-                // 音浪效果
-                createWaveRings(duration / 1000);
+                    osc.start(now);
+                    osc.stop(now + duration / 1000);
 
-                osc.onended = resolve;
+                    // 音浪效果
+                    createWaveRings(duration / 1000);
+
+                    osc.onended = () => {
+                        debug(`示范音播放完成: ${noteName}`);
+                        resolve();
+                    };
+                } catch (error) {
+                    debug('播放失败: ' + error.message);
+                    resolve();
+                }
             });
         }
 
@@ -483,7 +519,7 @@
                     opacity: 0.6,
                     phase: 0
                 });
-            }, 100);
+            }, 150);
         }
 
         // ==================== 音高检测 ====================
@@ -563,13 +599,8 @@
             const note = noteName.slice(0, -1);
             const octave = parseInt(noteName.slice(-1));
 
-            const baseLine = 4; // G4在第五线（索引4）
-            const g4Index = noteOrder.indexOf('G');
-            const currentIndex = noteOrder.indexOf(note);
-
-            // C4在第一间下面
-            const c4Position = 2; // 相对于五线谱中心的偏移
-            const noteOffset = currentIndex - noteOrder.indexOf('C');
+            const c4Position = 2;
+            const noteOffset = noteOrder.indexOf(note) - noteOrder.indexOf('C');
             const octaveOffset = (octave - 4) * 7;
 
             const positionIndex = c4Position + noteOffset + octaveOffset;
@@ -580,7 +611,6 @@
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
             ctx.lineWidth = 1.5;
 
-            // 绘制五条线
             for (let i = 0; i < staff.numLines; i++) {
                 const y = staff.y + i * staff.lineSpacing;
                 ctx.beginPath();
@@ -589,14 +619,12 @@
                 ctx.stroke();
             }
 
-            // 绘制高音谱号（简化）
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.font = `${staff.lineSpacing * 5}px serif`;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
             ctx.fillText('𝄞', 20, staff.y + staff.lineSpacing * 1.5);
 
-            // 绘制判定线
             ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
             ctx.lineWidth = 3;
             ctx.setLineDash([10, 5]);
@@ -606,7 +634,6 @@
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // 判定线标签
             ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
             ctx.font = 'bold 12px sans-serif';
             ctx.textAlign = 'center';
@@ -631,13 +658,13 @@
                 this.x -= this.speed;
 
                 // 播放示范音
-                if (!this.demoPlayed && this.x < staff.judgeX + 300) {
+                if (!this.demoPlayed && this.x < staff.judgeX + 250) {
                     this.demoPlayed = true;
-                    playDemoTone(this.noteName, Math.min(400, this.duration * 0.6));
+                    playDemoTone(this.noteName, Math.min(500, this.duration * 0.7));
                 }
 
                 // 自动错过
-                if (this.x < staff.judgeX - 100 && !this.hit && !this.missed) {
+                if (this.x < staff.judgeX - 80 && !this.hit && !this.missed) {
                     this.missed = true;
                     stats.miss++;
                     combo = 0;
@@ -651,13 +678,11 @@
                 const y = this.targetY;
                 const size = staff.lineSpacing * 0.8;
 
-                // 音符头
                 ctx.fillStyle = this.hit ? '#4ade80' : (this.missed ? '#f87171' : '#60a5fa');
                 ctx.beginPath();
                 ctx.ellipse(this.x, y, size * 0.8, size * 0.6, 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 音符杆
                 ctx.strokeStyle = ctx.fillStyle;
                 ctx.lineWidth = 3;
                 ctx.beginPath();
@@ -665,7 +690,6 @@
                 ctx.lineTo(this.x + size * 0.7, y - staff.lineSpacing * 3.5);
                 ctx.stroke();
 
-                // 显示音名（关卡1）
                 if (LEVELS[currentLevel].showNoteName) {
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.font = 'bold 14px sans-serif';
@@ -695,7 +719,6 @@
                 const size = 12 * this.scale;
                 const color = this.isPerfect ? '#4ade80' : '#fbbf24';
 
-                // 外圈
                 ctx.strokeStyle = color;
                 ctx.globalAlpha = this.opacity;
                 ctx.lineWidth = 2;
@@ -703,7 +726,6 @@
                 ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
                 ctx.stroke();
 
-                // 内点
                 ctx.fillStyle = color;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, size * 0.5, 0, Math.PI * 2);
@@ -713,48 +735,12 @@
             }
         }
 
-        // ==================== 偏离指示器类 ====================
-        class MissIndicator {
-            constructor(x, y, isHigh) {
-                this.x = x;
-                this.y = y;
-                this.isHigh = isHigh;
-                this.opacity = 1;
-                this.offset = 0;
-            }
-
-            update() {
-                this.offset += 2;
-                this.opacity -= 0.015;
-                return this.opacity > 0;
-            }
-
-            draw() {
-                const indicatorY = this.isHigh ?
-                    this.y - 30 - this.offset :
-                    this.y + 30 + this.offset;
-
-                ctx.fillStyle = `rgba(248, 113, 113, ${this.opacity})`;
-                ctx.font = 'bold 16px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(this.isHigh ? '↓ 偏高' : '↑ 偏低', this.x, indicatorY);
-
-                // 箭头
-                ctx.beginPath();
-                ctx.moveTo(this.x - 8, indicatorY + (this.isHigh ? 8 : -8));
-                ctx.lineTo(this.x + 8, indicatorY + (this.isHigh ? 8 : -8));
-                ctx.lineTo(this.x, indicatorY + (this.isHigh ? 18 : -18));
-                ctx.closePath();
-                ctx.fill();
-            }
-        }
-
         // ==================== 音浪环 ====================
         function drawWaveRings() {
             for (let i = waveRings.length - 1; i >= 0; i--) {
                 const ring = waveRings[i];
                 ring.radius += 2;
-                ring.opacity -= 0.01;
+                ring.opacity -= 0.012;
 
                 if (ring.opacity <= 0 || ring.radius > ring.maxRadius) {
                     waveRings.splice(i, 1);
@@ -769,8 +755,7 @@
             }
         }
 
-        // ==================== 用户发声箭头 ====================
-        let arrows = [];
+        // ==================== 发声箭头 ====================
         let lastArrowTime = 0;
         const ARROW_INTERVAL = 100;
 
@@ -794,25 +779,21 @@
                 const x = this.startX + (this.targetX - this.startX) * this.progress;
                 const y = this.startY + (this.targetY - this.startY) * this.progress;
 
-                // 根据cents决定颜色
                 const absCents = Math.abs(this.cents);
                 let color;
                 if (absCents <= CENTS_THRESHOLD) color = '#4ade80';
                 else if (absCents <= GOOD_CENTS_THRESHOLD) color = '#fbbf24';
                 else color = '#f87171';
 
-                // 绘制箭头
                 ctx.strokeStyle = color;
                 ctx.fillStyle = color;
                 ctx.lineWidth = 3;
 
-                // 箭身
                 ctx.beginPath();
                 ctx.moveTo(this.startX, this.startY);
                 ctx.lineTo(x, y);
                 ctx.stroke();
 
-                // 箭头
                 const angle = Math.atan2(this.targetY - this.startY, this.targetX - this.startX);
                 ctx.save();
                 ctx.translate(x, y);
@@ -828,8 +809,12 @@
         }
 
         // ==================== 游戏控制 ====================
-        function startGame() {
-            initAudio();
+        async function startGame() {
+            const success = await initAudio();
+            if (!success) {
+                alert('音频初始化失败，请检查浏览器权限');
+                return;
+            }
 
             const levelConfig = LEVELS[currentLevel];
             const melodyIndex = Math.floor(Math.random() * levelConfig.melodies.length);
@@ -837,10 +822,8 @@
 
             gameNotes = [];
             hitPoints = [];
-            missIndicators = [];
-            arrows = [];
             waveRings = [];
-            melodyIndex = 0;
+            arrows = [];
             score = 0;
             combo = 0;
             maxCombo = 0;
@@ -850,16 +833,19 @@
             updateDisplay();
 
             document.getElementById('hintDisplay').textContent = `关卡${currentLevel}: ${levelConfig.name}`;
+            debug(`游戏开始 - 关卡${currentLevel}: ${levelConfig.name}`);
 
             // 生成音符
             let delay = 0;
-            currentMelody.forEach((noteData, index) => {
+            currentMelody.forEach((noteData) => {
                 setTimeout(() => {
                     if (gameRunning) {
-                        gameNotes.push(new GameNote(noteData.note, noteData.duration, levelConfig.speed));
+                        const note = new GameNote(noteData.note, noteData.duration, levelConfig.speed);
+                        gameNotes.push(note);
+                        debug(`音符生成: ${noteData.note}`);
                     }
                 }, delay);
-                delay += noteData.duration + 500;
+                delay += noteData.duration + 600;
             });
 
             // 游戏结束检测
@@ -885,26 +871,21 @@
             if (accuracy >= 90) {
                 emoji.textContent = '🏆';
                 title.textContent = '完美！';
-                subtitle.textContent = `得分: ${score} | 最高连击: ${maxCombo}`;
             } else if (accuracy >= 70) {
                 emoji.textContent = '🎯';
                 title.textContent = '很棒！';
-                subtitle.textContent = `得分: ${score} | 最高连击: ${maxCombo}`;
-            } else if (accuracy >= 50) {
-                emoji.textContent = '😊';
-                title.textContent = '继续加油！';
-                subtitle.textContent = `得分: ${score} | 最高连击: ${maxCombo}`;
             } else {
                 emoji.textContent = '💪';
-                title.textContent = '多练习哦！';
-                subtitle.textContent = `得分: ${score} | 准确率: ${accuracy}%`;
+                title.textContent = '继续加油！';
             }
+            subtitle.textContent = `得分: ${score} | 最高连击: ${maxCombo}`;
 
             document.getElementById('statPerfect').textContent = stats.perfect;
             document.getElementById('statGood').textContent = stats.good;
             document.getElementById('statMiss').textContent = stats.miss;
 
             overlay.classList.add('show');
+            debug('游戏结束');
         }
 
         function updateDisplay() {
@@ -914,10 +895,19 @@
 
         // ==================== 发声检测 ====================
         async function startSinging() {
-            if (!gameRunning) return;
+            if (!gameRunning) {
+                debug('请先开始游戏');
+                return;
+            }
+
+            if (isSinging) return;
 
             try {
-                initAudio();
+                debug('请求麦克风权限...');
+
+                if (!audioContext || !audioInitialized) {
+                    await initAudio();
+                }
 
                 mediaStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
@@ -926,6 +916,8 @@
                         autoGainControl: false
                     }
                 });
+
+                debug('麦克风已连接');
 
                 const source = audioContext.createMediaStreamSource(mediaStream);
                 analyser = audioContext.createAnalyser();
@@ -941,8 +933,9 @@
                 detectPitchLoop();
 
             } catch (error) {
-                console.error('Microphone error:', error);
-                alert('无法访问麦克风');
+                debug('麦克风错误: ' + error.message);
+                console.error(error);
+                alert('无法访问麦克风，请检查权限设置');
             }
         }
 
@@ -950,11 +943,13 @@
             isSinging = false;
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
             }
 
             document.getElementById('singBtn').classList.remove('singing');
             document.getElementById('singBtn').querySelector('.text').textContent = '按住发声';
             document.getElementById('pitchValue').textContent = '--';
+            debug('停止录音');
         }
 
         function detectPitchLoop() {
@@ -982,7 +977,6 @@
                     const centsDiff = calculateCentsDiff(smoothedPitch, activeNote.frequency);
                     const absCents = Math.abs(centsDiff);
 
-                    // 生成箭头视觉效果
                     const now = Date.now();
                     if (now - lastArrowTime > ARROW_INTERVAL) {
                         arrows.push(new SingArrow(
@@ -992,7 +986,6 @@
                         ));
                         lastArrowTime = now;
 
-                        // 音浪效果
                         waveRings.push({
                             radius: staff.lineSpacing * 2,
                             maxRadius: staff.lineSpacing * 6,
@@ -1001,7 +994,6 @@
                         });
                     }
 
-                    // 判定命中
                     if (absCents <= CENTS_THRESHOLD) {
                         activeNote.hit = true;
                         stats.perfect++;
@@ -1009,6 +1001,7 @@
                         combo++;
                         maxCombo = Math.max(maxCombo, combo);
                         hitPoints.push(new HitPoint(staff.judgeX, activeNote.targetY, true));
+                        updateDisplay();
                     } else if (absCents <= GOOD_CENTS_THRESHOLD) {
                         activeNote.hit = true;
                         stats.good++;
@@ -1016,10 +1009,9 @@
                         combo++;
                         maxCombo = Math.max(maxCombo, combo);
                         hitPoints.push(new HitPoint(staff.judgeX, activeNote.targetY, false));
+                        updateDisplay();
                     }
                 }
-
-                updateDisplay();
             }
 
             requestAnimationFrame(detectPitchLoop);
@@ -1029,13 +1021,9 @@
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 绘制五线谱
             drawStaff();
-
-            // 音浪环
             drawWaveRings();
 
-            // 更新和绘制音符
             for (let i = gameNotes.length - 1; i >= 0; i--) {
                 if (!gameNotes[i].update()) {
                     gameNotes.splice(i, 1);
@@ -1044,7 +1032,6 @@
                 }
             }
 
-            // 更新和绘制命中点
             for (let i = hitPoints.length - 1; i >= 0; i--) {
                 if (!hitPoints[i].update()) {
                     hitPoints.splice(i, 1);
@@ -1053,16 +1040,6 @@
                 }
             }
 
-            // 更新和绘制偏离指示器
-            for (let i = missIndicators.length - 1; i >= 0; i--) {
-                if (!missIndicators[i].update()) {
-                    missIndicators.splice(i, 1);
-                } else {
-                    missIndicators[i].draw();
-                }
-            }
-
-            // 更新和绘制箭头
             for (let i = arrows.length - 1; i >= 0; i--) {
                 if (!arrows[i].update()) {
                     arrows.splice(i, 1);
@@ -1084,7 +1061,6 @@
         const stopHandler = () => { if (isSinging) stopSinging(); };
         document.addEventListener('mouseup', stopHandler);
         document.addEventListener('touchend', stopHandler);
-        document.addEventListener('mouseleave', stopHandler);
 
         document.querySelectorAll('.btn-level').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1110,9 +1086,11 @@
         // 启动游戏循环
         gameLoop();
 
-        // 初始化音频
-        document.addEventListener('click', () => {
-            initAudio();
+        // 页面点击时初始化音频
+        document.addEventListener('click', async () => {
+            if (!audioInitialized) {
+                await initAudio();
+            }
         }, { once: true });
     </script>
 </body>
